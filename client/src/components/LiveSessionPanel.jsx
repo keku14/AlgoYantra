@@ -19,7 +19,7 @@ export default function LiveSessionPanel({
   const [quizOptions, setQuizOptions] = useState("LL rotation, RR rotation, Color flip");
 
   useEffect(() => {
-    const socket = io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000");
+    const socket = io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5001");
     socketRef.current = socket;
 
     socket.on("session:state", (nextSession) => {

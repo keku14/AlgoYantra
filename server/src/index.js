@@ -7,7 +7,7 @@ import app from "./app.js";
 import { connectDB } from "./config/db.js";
 import { initializeSocket } from "./sockets/sessionSocket.js";
 
-const port = Number(process.env.PORT) || 5000;
+const port = Number(process.env.PORT) || 5001;
 
 async function startServer() {
   await connectDB();

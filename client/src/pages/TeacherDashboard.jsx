@@ -127,7 +127,7 @@ export default function TeacherDashboard() {
                       </h3>
                     </div>
                     <div className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-100 light:text-cyan-700">
-                      {assignment.xpReward} XP
+                      {assignment.xpReward} Marks
                     </div>
                   </div>
                   <p className="mt-3 text-sm leading-7 text-slate-300 light:text-slate-700">
@@ -224,9 +224,6 @@ export default function TeacherDashboard() {
                       <div className="font-display text-2xl font-bold text-cyan-200 light:text-cyan-700">
                         {submission.score}%
                       </div>
-                      <p className="text-sm text-slate-400 light:text-slate-600">
-                        Level {submission.student?.level || 1}
-                      </p>
                     </div>
                   </div>
                 )) : (
@@ -253,7 +250,7 @@ export default function TeacherDashboard() {
                   <div>
                     <p className="font-medium text-white light:text-slate-900">{student.name}</p>
                     <p className="text-sm text-slate-400 light:text-slate-600">
-                      {student.attempts} attempts | Level {student.level}
+                      {student.attempts} attempts
                     </p>
                   </div>
                   <div className="text-right">

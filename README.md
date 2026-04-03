@@ -51,7 +51,7 @@ cp client/.env.example client/.env
 npm run dev
 ```
 
-Frontend runs on `http://localhost:5173` and backend runs on `http://localhost:5000`.
+Frontend runs on `http://localhost:5173` and backend runs on `http://localhost:5001`.
 
 ## Environment Variables
 
@@ -60,7 +60,7 @@ Frontend runs on `http://localhost:5173` and backend runs on `http://localhost:5
 ```env
 MONGO_URI=mongodb+srv://sk:algoyantra@algoyantra.m6nexyk.mongodb.net/?appName=AlgoYantra
 JWT_SECRET=your_secret_key
-PORT=5000
+PORT=5001
 CLIENT_URL=http://localhost:5173
 AUTO_SEED=true
 ```
@@ -68,8 +68,8 @@ AUTO_SEED=true
 ### `client/.env`
 
 ```env
-VITE_API_URL=http://localhost:5000/api
-VITE_SOCKET_URL=http://localhost:5000
+VITE_API_URL=http://localhost:5001/api
+VITE_SOCKET_URL=http://localhost:5001
 ```
 
 ## Demo Accounts

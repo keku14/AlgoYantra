@@ -13,15 +13,9 @@ const defaultForm = {
   title: "",
   description: "",
   treeType: "bst",
-  lesson: "",
-  minValue: 1,
-  maxValue: 100,
   xpReward: 120,
-  difficulty: "Intermediate",
   dueDate: "",
-  liveSessionEnabled: false,
   promptValues: "",
-  referenceImageUrl: "",
 };
 
 function parsePromptValues(value) {
@@ -33,7 +27,7 @@ function parsePromptValues(value) {
     .filter((item) => Number.isFinite(item));
 }
 
-export default function AssignmentEditor({ lessons = [], onCreated }) {
+export default function AssignmentEditor({ onCreated }) {
   const [form, setForm] = useState(defaultForm);
   const [saving, setSaving] = useState(false);
 
@@ -64,20 +58,11 @@ export default function AssignmentEditor({ lessons = [], onCreated }) {
         title: form.title,
         description: form.description,
         treeType: form.treeType,
-        lesson: form.lesson || undefined,
-        difficulty: form.difficulty,
         xpReward: Number(form.xpReward),
         dueDate: form.dueDate || undefined,
-        liveSessionEnabled: form.liveSessionEnabled,
         promptValues,
-        referenceImageUrl: form.referenceImageUrl.trim(),
         solutionTree,
         initialTree: null,
-        constraints: {
-          minValue: Number(form.minValue),
-          maxValue: Number(form.maxValue),
-          allowDuplicates: false,
-        },
         operations: [],
       };
 
@@ -91,8 +76,6 @@ export default function AssignmentEditor({ lessons = [], onCreated }) {
       setSaving(false);
     }
   }
-
-  const matchingLessons = lessons.filter((lesson) => lesson.type === form.treeType);
 
   return (
     <SectionCard title="Assignment editor" eyebrow="Teacher tooling">
@@ -135,38 +118,6 @@ export default function AssignmentEditor({ lessons = [], onCreated }) {
             />
           </label>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="space-y-2">
-              <span className="text-sm text-slate-300 light:text-slate-700">Linked lesson</span>
-              <select
-                value={form.lesson}
-                onChange={(event) => updateField("lesson", event.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white light:border-slate-200 light:bg-white light:text-slate-900"
-              >
-                <option value="">None</option>
-                {matchingLessons.map((lesson) => (
-                  <option key={lesson._id} value={lesson._id}>
-                    {lesson.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm text-slate-300 light:text-slate-700">Difficulty</span>
-              <select
-                value={form.difficulty}
-                onChange={(event) => updateField("difficulty", event.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white light:border-slate-200 light:bg-white light:text-slate-900"
-              >
-                {["Beginner", "Intermediate", "Advanced"].map((difficulty) => (
-                  <option key={difficulty} value={difficulty}>
-                    {difficulty}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
           <label className="block space-y-2">
             <span className="text-sm text-slate-300 light:text-slate-700">Vector of integers</span>
             <textarea
@@ -178,37 +129,9 @@ export default function AssignmentEditor({ lessons = [], onCreated }) {
             />
           </label>
 
-          <label className="block space-y-2">
-            <span className="text-sm text-slate-300 light:text-slate-700">Correct answer image URL</span>
-            <input
-              value={form.referenceImageUrl}
-              onChange={(event) => updateField("referenceImageUrl", event.target.value)}
-              placeholder="https://..."
-              className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white light:border-slate-200 light:bg-white light:text-slate-900"
-            />
-          </label>
-
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2">
-              <span className="text-sm text-slate-300 light:text-slate-700">Min</span>
-              <input
-                type="number"
-                value={form.minValue}
-                onChange={(event) => updateField("minValue", event.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white light:border-slate-200 light:bg-white light:text-slate-900"
-              />
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm text-slate-300 light:text-slate-700">Max</span>
-              <input
-                type="number"
-                value={form.maxValue}
-                onChange={(event) => updateField("maxValue", event.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white light:border-slate-200 light:bg-white light:text-slate-900"
-              />
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm text-slate-300 light:text-slate-700">XP reward</span>
+              <span className="text-sm text-slate-300 light:text-slate-700">Marks</span>
               <input
                 type="number"
                 value={form.xpReward}
@@ -227,15 +150,6 @@ export default function AssignmentEditor({ lessons = [], onCreated }) {
             </label>
           </div>
 
-          <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 light:border-slate-200 light:bg-white light:text-slate-700">
-            <input
-              type="checkbox"
-              checked={form.liveSessionEnabled}
-              onChange={(event) => updateField("liveSessionEnabled", event.target.checked)}
-            />
-            Allow live session mode for this assignment
-          </label>
-
           <button
             type="submit"
             disabled={saving}
@@ -252,18 +166,6 @@ export default function AssignmentEditor({ lessons = [], onCreated }) {
             </p>
             <div className="mt-4">
               <TreeVisualizer tree={solutionTree} height={360} />
-            </div>
-          </div>
-          <div className="rounded-[2rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-              Assignment data
-            </p>
-            <div className="mt-4 space-y-2 text-sm text-slate-300 light:text-slate-700">
-              <p>Vector: {promptValues.length ? promptValues.join(", ") : "No valid integers yet."}</p>
-              <p>
-                Reference image:{" "}
-                {form.referenceImageUrl.trim() ? "Attached via URL" : "Not provided yet"}
-              </p>
             </div>
           </div>
         </div>
