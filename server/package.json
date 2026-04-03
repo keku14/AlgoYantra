@@ -7,7 +7,8 @@
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "build": "node --check src/index.js",
-    "seed": "node src/utils/runSeed.js"
+    "seed": "node src/utils/runSeed.js",
+    "reset": "node src/utils/runReset.js"
   },
   "dependencies": {
     "@algoyantra/shared": "1.0.0",

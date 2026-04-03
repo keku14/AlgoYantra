@@ -4,7 +4,6 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "./routes/ProtectedRoute.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
-import LandingPage from "./pages/LandingPage.jsx";
 
 const TeacherDashboard = lazy(() => import("./pages/TeacherDashboard.jsx"));
 const StudentDashboard = lazy(() => import("./pages/StudentDashboard.jsx"));
@@ -13,7 +12,7 @@ function HomeRedirect() {
   const { user } = useAuth();
 
   if (!user) {
-    return <LandingPage />;
+    return <Navigate to="/auth" replace />;
   }
 
   return <Navigate to={user.role === "teacher" ? "/teacher" : "/student"} replace />;
@@ -35,19 +34,19 @@ export default function App() {
         <Route path="/auth" element={<AuthPage />} />
         <Route
           path="/teacher"
-          element={
+          element={(
             <ProtectedRoute role="teacher">
               <TeacherDashboard />
             </ProtectedRoute>
-          }
+          )}
         />
         <Route
           path="/student"
-          element={
+          element={(
             <ProtectedRoute role="student">
               <StudentDashboard />
             </ProtectedRoute>
-          }
+          )}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

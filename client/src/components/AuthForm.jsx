@@ -3,8 +3,8 @@ import { useState } from "react";
 export default function AuthForm({ mode, loading, onSubmit }) {
   const [form, setForm] = useState({
     name: "",
-    email: mode === "login" ? "teacher@algoyantra.dev" : "",
-    password: mode === "login" ? "Teach123!" : "",
+    email: "",
+    password: "",
     role: "teacher",
   });
 
@@ -19,15 +19,6 @@ export default function AuthForm({ mode, loading, onSubmit }) {
   function handleSubmit(event) {
     event.preventDefault();
     onSubmit(form);
-  }
-
-  function applyDemo(role) {
-    setForm({
-      name: role === "teacher" ? "Prof. Arya Menon" : "Riya Sharma",
-      email: role === "teacher" ? "teacher@algoyantra.dev" : "student@algoyantra.dev",
-      password: role === "teacher" ? "Teach123!" : "Learn123!",
-      role,
-    });
   }
 
   return (
@@ -91,26 +82,6 @@ export default function AuthForm({ mode, loading, onSubmit }) {
           placeholder="Enter your password"
         />
       </label>
-
-      <div className="rounded-3xl border border-amber-300/15 bg-amber-400/10 p-4">
-        <p className="text-sm font-semibold text-amber-200 light:text-amber-700">Demo accounts</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => applyDemo("teacher")}
-            className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-100 transition hover:bg-white/10 light:border-slate-200 light:text-slate-800"
-          >
-            Fill teacher credentials
-          </button>
-          <button
-            type="button"
-            onClick={() => applyDemo("student")}
-            className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-100 transition hover:bg-white/10 light:border-slate-200 light:text-slate-800"
-          >
-            Fill student credentials
-          </button>
-        </div>
-      </div>
 
       <button
         type="submit"

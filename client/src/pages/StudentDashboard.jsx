@@ -1,40 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import {
-  BookOpen,
-  Flame,
-  GraduationCap,
-  Network,
-  Target,
-  Trophy,
-} from "lucide-react";
+import { GraduationCap, LineChart, Target, Trophy } from "lucide-react";
 
-import {
-  createBlankTreeFromTemplate,
-  simulateOperations,
-} from "@algoyantra/shared";
+import { createBlankTreeFromTemplate, simulateOperations } from "@algoyantra/shared";
 
 import api from "../api/client.js";
 import AnalyticsCharts from "../components/AnalyticsCharts.jsx";
 import AppShell from "../components/AppShell.jsx";
-import LeaderboardCard from "../components/LeaderboardCard.jsx";
-import LessonPlayer from "../components/LessonPlayer.jsx";
-import LiveSessionPanel from "../components/LiveSessionPanel.jsx";
 import ResultExportCard from "../components/ResultExportCard.jsx";
 import SectionCard from "../components/SectionCard.jsx";
 import SkeletonCard from "../components/SkeletonCard.jsx";
 import StatCard from "../components/StatCard.jsx";
 import StudentAssignmentWorkspace from "../components/StudentAssignmentWorkspace.jsx";
-import TreeVisualizer from "../components/TreeVisualizer.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
-import { studentCurriculum } from "../data/studentCurriculum.js";
 import useHistoryState from "../hooks/useHistoryState.js";
 
 const tabs = [
-  { id: "learn", label: "Learn", icon: BookOpen },
   { id: "assignments", label: "Assignments", icon: GraduationCap },
-  { id: "live", label: "Live Class", icon: Network },
-  { id: "results", label: "Results", icon: Trophy },
+  { id: "analytics", label: "Analytics", icon: LineChart },
 ];
 
 function getAssignmentSolutionTree(assignment) {
@@ -56,15 +39,13 @@ function getAssignmentSolutionTree(assignment) {
 
 export default function StudentDashboard() {
   const { user, refreshProfile } = useAuth();
-  const [activeTab, setActiveTab] = useState("learn");
+  const [activeTab, setActiveTab] = useState("assignments");
   const [loading, setLoading] = useState(true);
   const [assignments, setAssignments] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [analytics, setAnalytics] = useState(null);
-  const [selectedTrackId, setSelectedTrackId] = useState(studentCurriculum[0].id);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(null);
   const [result, setResult] = useState(null);
-  const [liveState, setLiveState] = useState(null);
   const [submittingAssignment, setSubmittingAssignment] = useState(false);
   const solverHistory = useHistoryState(null);
 
@@ -97,7 +78,6 @@ export default function StudentDashboard() {
     }
   }, [assignments, selectedAssignmentId]);
 
-  const selectedTrack = studentCurriculum.find((track) => track.id === selectedTrackId) || null;
   const selectedAssignment =
     assignments.find((assignment) => assignment._id === selectedAssignmentId) || null;
   const selectedAssignmentTemplate = useMemo(
@@ -127,7 +107,7 @@ export default function StudentDashboard() {
       toast.success(`Submission scored: ${data.evaluation.score}%`);
       await refreshProfile();
       await loadDashboard();
-      setActiveTab("results");
+      setActiveTab("analytics");
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to submit assignment.");
     } finally {
@@ -139,7 +119,6 @@ export default function StudentDashboard() {
     accuracy: 0,
     totalXp: user?.xp || 0,
     level: user?.level || 1,
-    streak: user?.streak || 0,
   };
 
   const latestSubmissionEvaluation = result
@@ -156,7 +135,7 @@ export default function StudentDashboard() {
   return (
     <AppShell
       title="Student dashboard"
-      subtitle="Follow structured tree lessons, fill assignment trees directly by clicking nodes, join live classes, and review your results."
+      subtitle="Solve your assignments directly in the tree workspace and keep track of your performance."
       user={user}
       tabs={tabs}
       activeTab={activeTab}
@@ -170,47 +149,11 @@ export default function StudentDashboard() {
         </div>
       ) : null}
 
-      {!loading && activeTab === "learn" ? (
-        <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard icon={Target} label="Accuracy" value={`${overview.accuracy}%`} helper="Overall evaluated correctness" tone="cyan" />
-            <StatCard icon={Trophy} label="XP" value={overview.totalXp} helper="Earned from assignments" tone="emerald" />
-            <StatCard icon={GraduationCap} label="Level" value={overview.level} helper="Current student level" tone="amber" />
-            <StatCard icon={Flame} label="Streak" value={overview.streak} helper="Consecutive active days" tone="rose" />
-          </div>
-
-          <div className="grid gap-6 xl:grid-cols-[0.38fr,0.62fr]">
-            <SectionCard title="Lesson tracks" eyebrow="Four trees to master">
-              <div className="space-y-3">
-                {studentCurriculum.map((track) => (
-                  <button
-                    key={track.id}
-                    type="button"
-                    onClick={() => setSelectedTrackId(track.id)}
-                    className={`w-full rounded-[1.5rem] border px-4 py-4 text-left transition ${
-                      selectedTrackId === track.id
-                        ? "border-cyan-300/50 bg-cyan-400/10 text-cyan-50"
-                        : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 light:border-slate-200 light:bg-white light:text-slate-700"
-                    }`}
-                  >
-                    <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{track.type}</p>
-                    <h3 className="mt-2 font-display text-lg font-semibold">{track.title}</h3>
-                    <p className="mt-2 text-sm leading-6">{track.summary}</p>
-                  </button>
-                ))}
-              </div>
-            </SectionCard>
-
-            <LessonPlayer track={selectedTrack} />
-          </div>
-        </div>
-      ) : null}
-
       {!loading && activeTab === "assignments" ? (
         <div className="grid gap-6 xl:grid-cols-[0.35fr,0.65fr]">
-          <SectionCard title="Assigned work" eyebrow="Select a challenge">
+          <SectionCard title="Assigned work" eyebrow="Select an assignment">
             <div className="space-y-3">
-              {assignments.map((assignment) => (
+              {assignments.length ? assignments.map((assignment) => (
                 <button
                   key={assignment._id}
                   type="button"
@@ -239,7 +182,11 @@ export default function StudentDashboard() {
                     </p>
                   ) : null}
                 </button>
-              ))}
+              )) : (
+                <div className="rounded-[1.5rem] border border-dashed border-white/15 p-6 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
+                  No assignments available yet.
+                </div>
+              )}
             </div>
           </SectionCard>
 
@@ -257,63 +204,46 @@ export default function StudentDashboard() {
         </div>
       ) : null}
 
-      {!loading && activeTab === "live" ? (
-        <div className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
-          <SectionCard title="Classroom stream" eyebrow="Teacher broadcast">
-            <TreeVisualizer
-              tree={liveState?.tree}
-              highlights={liveState?.highlights || []}
-              height={420}
-            />
-            {liveState?.traversal?.order ? (
-              <div className="mt-4 rounded-[2rem] border border-emerald-300/15 bg-emerald-500/10 p-4 text-sm text-emerald-50 light:text-emerald-700">
-                Live traversal {liveState.traversal.order}: {liveState.traversal.values.join(" -> ")}
-              </div>
-            ) : null}
-          </SectionCard>
-          <LiveSessionPanel
-            mode="student"
-            user={user}
-            tree={null}
-            treeType="bst"
-            highlights={[]}
-            latestTraversal={null}
-            onRemoteState={setLiveState}
-          />
-        </div>
-      ) : null}
-
-      {!loading && activeTab === "results" ? (
+      {!loading && activeTab === "analytics" ? (
         <div className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <StatCard icon={Target} label="Accuracy" value={`${overview.accuracy}%`} helper="Overall assignment accuracy" tone="cyan" />
+            <StatCard icon={Trophy} label="XP" value={overview.totalXp} helper="Earned from assignments" tone="emerald" />
+            <StatCard icon={GraduationCap} label="Level" value={overview.level} helper="Current student level" tone="amber" />
+          </div>
+
           <AnalyticsCharts
             progress={analytics?.progress || []}
             assignmentBreakdown={analytics?.assignmentBreakdown || []}
           />
-          <div className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
-            <SectionCard title="Performance history" eyebrow="Recent submissions">
-              <div className="space-y-3">
-                {submissions.map((submission) => (
-                  <div
-                    key={submission._id}
-                    className="flex items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/5 px-4 py-4 light:border-slate-200 light:bg-white"
-                  >
-                    <div>
-                      <p className="font-medium text-white light:text-slate-900">
-                        {submission.assignment?.title}
-                      </p>
-                      <p className="text-sm text-slate-400 light:text-slate-600">
-                        {submission.assignment?.treeType}
-                      </p>
-                    </div>
-                    <div className="font-display text-2xl font-bold text-cyan-200 light:text-cyan-700">
-                      {submission.score}
-                    </div>
+
+          <SectionCard title="Performance history" eyebrow="Recent submissions">
+            <div className="space-y-3">
+              {submissions.length ? submissions.map((submission) => (
+                <div
+                  key={submission._id}
+                  className="flex items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/5 px-4 py-4 light:border-slate-200 light:bg-white"
+                >
+                  <div>
+                    <p className="font-medium text-white light:text-slate-900">
+                      {submission.assignment?.title}
+                    </p>
+                    <p className="text-sm text-slate-400 light:text-slate-600">
+                      {submission.assignment?.treeType}
+                    </p>
                   </div>
-                ))}
-              </div>
-            </SectionCard>
-            <LeaderboardCard leaderboard={analytics?.leaderboard || []} />
-          </div>
+                  <div className="font-display text-2xl font-bold text-cyan-200 light:text-cyan-700">
+                    {submission.score}%
+                  </div>
+                </div>
+              )) : (
+                <div className="rounded-[1.5rem] border border-dashed border-white/15 p-6 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
+                  Submit an assignment to start seeing your results here.
+                </div>
+              )}
+            </div>
+          </SectionCard>
+
           <ResultExportCard assignment={selectedAssignment} evaluation={latestSubmissionEvaluation} />
         </div>
       ) : null}

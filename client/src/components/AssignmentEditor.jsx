@@ -19,8 +19,8 @@ const defaultForm = {
   xpReward: 120,
   difficulty: "Intermediate",
   dueDate: "",
-  liveSessionEnabled: true,
-  promptValues: "50, 10, 40",
+  liveSessionEnabled: false,
+  promptValues: "",
   referenceImageUrl: "",
 };
 
@@ -173,7 +173,7 @@ export default function AssignmentEditor({ lessons = [], onCreated }) {
               value={form.promptValues}
               onChange={(event) => updateField("promptValues", event.target.value)}
               rows="3"
-              placeholder="50, 10, 40"
+              placeholder="e.g. 50, 10, 40"
               className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white light:border-slate-200 light:bg-white light:text-slate-900"
             />
           </label>

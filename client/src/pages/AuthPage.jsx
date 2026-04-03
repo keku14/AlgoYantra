@@ -49,13 +49,14 @@ export default function AuthPage() {
         <section className="glass-panel section-gradient flex flex-col justify-between p-8 sm:p-10">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300/80">
-              Secure access
+              Teacher and student access
             </p>
             <h1 className="mt-4 font-display text-4xl font-extrabold leading-tight text-white light:text-slate-900">
-              Teach and learn trees in a workspace designed like a real ed-tech product.
+              Log in or sign up to start assignments right away.
             </h1>
             <p className="mt-5 max-w-xl text-sm leading-7 text-slate-300 light:text-slate-700">
-              Separate teacher and student roles, persistent JWT sessions, live classrooms, algorithmic scoring, and polished dashboards all start here.
+              Teachers create assignments and review results. Students solve them interactively and
+              track their performance from one place.
             </p>
           </div>
 
@@ -63,13 +64,13 @@ export default function AuthPage() {
             <div className="rounded-[2rem] border border-white/10 bg-white/8 p-5">
               <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Teacher</p>
               <p className="mt-3 text-lg font-semibold text-white light:text-slate-900">
-                Create lessons, assignments, and live sessions
+                Create assignments and check assignment-wise results
               </p>
             </div>
             <div className="rounded-[2rem] border border-white/10 bg-white/8 p-5">
               <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Student</p>
               <p className="mt-3 text-lg font-semibold text-white light:text-slate-900">
-                Practice trees, submit work, and climb the leaderboard
+                Solve assignments interactively and see performance analytics
               </p>
             </div>
           </div>
@@ -94,16 +95,16 @@ export default function AuthPage() {
           </div>
 
           <h2 className="font-display text-3xl font-bold text-white light:text-slate-900">
-            {mode === "login" ? "Welcome back" : "Create your workspace"}
+            {mode === "login" ? "Welcome back" : "Create your account"}
           </h2>
           <p className="mt-2 text-sm text-slate-400 light:text-slate-600">
             {mode === "login"
-              ? "Sign in with your teacher or student account."
-              : "Start with a role and unlock the matching dashboard."}
+              ? "Sign in as a teacher or student."
+              : "Choose your role and open the right dashboard."}
           </p>
 
           <div className="mt-8">
-            <AuthForm mode={mode} loading={loading} onSubmit={handleSubmit} />
+            <AuthForm key={mode} mode={mode} loading={loading} onSubmit={handleSubmit} />
           </div>
         </section>
       </div>
