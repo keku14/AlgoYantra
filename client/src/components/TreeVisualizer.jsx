@@ -7,10 +7,16 @@ export default function TreeVisualizer({
   tree,
   highlights = [],
   onNodeClick,
+  onAddRoot,
+  onAddChild,
+  onDeleteNode,
+  onNodeValueChange,
+  editableNodeId,
   height = 420,
 }) {
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 700, height });
+  const [draftValue, setDraftValue] = useState("");
 
   useEffect(() => {
     function syncDimensions() {
@@ -31,11 +37,48 @@ export default function TreeVisualizer({
   }, [height]);
 
   const d3Data = treeToD3Data(tree);
+  const nodeCount = countNodes(tree);
+  const translateY = nodeCount <= 1 ? dimensions.height / 2 : 70;
+
+  useEffect(() => {
+    if (!editableNodeId || !tree) {
+      setDraftValue("");
+      return;
+    }
+
+    function findNode(node, nodeId) {
+      if (!node) {
+        return null;
+      }
+
+      if (node.id === nodeId) {
+        return node;
+      }
+
+      return findNode(node.left, nodeId) || findNode(node.right, nodeId);
+    }
+
+    const activeNode = findNode(tree, editableNodeId);
+    setDraftValue(activeNode?.value == null ? "" : String(activeNode.value));
+  }, [editableNodeId, tree]);
+
+  function commitDraftValue(nodeId) {
+    onNodeValueChange?.(nodeId, draftValue);
+  }
 
   if (!tree || !d3Data) {
     return (
-      <div className="flex h-[360px] items-center justify-center rounded-[2rem] border border-dashed border-white/15 bg-slate-950/30 text-center text-sm text-slate-400 light:border-slate-300 light:bg-slate-100 light:text-slate-600">
-        Start inserting nodes to see the tree grow.
+      <div className="flex h-[360px] flex-col items-center justify-center gap-4 rounded-[2rem] border border-dashed border-white/15 bg-slate-950/30 px-6 text-center text-sm text-slate-400 light:border-slate-300 light:bg-slate-100 light:text-slate-600">
+        <p>Start with a blank workspace and create the root node.</p>
+        {onAddRoot ? (
+          <button
+            type="button"
+            onClick={onAddRoot}
+            className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 font-semibold text-slate-950"
+          >
+            Add root node
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -50,7 +93,7 @@ export default function TreeVisualizer({
         <Tree
           data={d3Data}
           pathFunc="elbow"
-          translate={{ x: dimensions.width / 2, y: 70 }}
+          translate={{ x: dimensions.width / 2, y: translateY }}
           orientation="vertical"
           separation={{ siblings: 1.3, nonSiblings: 1.6 }}
           zoomable
@@ -64,6 +107,9 @@ export default function TreeVisualizer({
             const isHighlighted = highlights.includes(nodeDatum.nodeId);
             const isRedNode = nodeDatum.attributes?.color === "red";
             const isEmpty = nodeDatum.attributes?.isEmpty;
+            const hasLeftChild = nodeDatum.attributes?.hasLeftChild;
+            const hasRightChild = nodeDatum.attributes?.hasRightChild;
+            const isEditing = editableNodeId === nodeDatum.nodeId;
             const fill = isHighlighted
               ? "#22d3ee"
               : isEmpty
@@ -84,16 +130,107 @@ export default function TreeVisualizer({
                   strokeWidth="2"
                   strokeDasharray={isEmpty ? "5 3" : "0"}
                 />
-                <text
-                  fill="#f8fafc"
-                  stroke="none"
-                  x="0"
-                  y="5"
-                  textAnchor="middle"
-                  style={{ fontSize: isEmpty ? 20 : 14, fontWeight: 700 }}
-                >
-                  {nodeDatum.name}
-                </text>
+                {isEditing ? (
+                  <foreignObject
+                    x="-24"
+                    y="-16"
+                    width="48"
+                    height="32"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <input
+                      value={draftValue}
+                      onChange={(event) => setDraftValue(event.target.value)}
+                      onBlur={() => commitDraftValue(nodeDatum.nodeId)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          event.currentTarget.blur();
+                        }
+                      }}
+                      className="h-full w-full rounded-full border border-cyan-300/60 bg-slate-950/90 px-2 text-center text-xs font-semibold text-white outline-none"
+                      inputMode="numeric"
+                      autoFocus
+                    />
+                  </foreignObject>
+                ) : (
+                  <text
+                    fill="#f8fafc"
+                    stroke="none"
+                    x="0"
+                    y="5"
+                    textAnchor="middle"
+                    style={{ fontSize: isEmpty ? 20 : 14, fontWeight: 700 }}
+                  >
+                    {nodeDatum.name}
+                  </text>
+                )}
+                {onDeleteNode ? (
+                  <g
+                    transform="translate(0,-44)"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onDeleteNode(nodeDatum.nodeId);
+                    }}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <circle r="12" fill="#f59e0b" stroke="#fde68a" strokeWidth="1.5" />
+                    <text
+                      fill="#111827"
+                      stroke="none"
+                      x="0"
+                      y="4"
+                      textAnchor="middle"
+                      style={{ fontSize: 14, fontWeight: 700 }}
+                    >
+                      -
+                    </text>
+                  </g>
+                ) : null}
+                {onAddChild && !hasLeftChild ? (
+                  <g
+                    transform="translate(-44,44)"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onAddChild("left", nodeDatum.nodeId);
+                    }}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <circle r="14" fill="#0f172a" stroke="#38bdf8" strokeWidth="1.5" />
+                    <text
+                      fill="#e0f2fe"
+                      stroke="none"
+                      x="0"
+                      y="4"
+                      textAnchor="middle"
+                      style={{ fontSize: 12, fontWeight: 700 }}
+                    >
+                      L+
+                    </text>
+                  </g>
+                ) : null}
+                {onAddChild && !hasRightChild ? (
+                  <g
+                    transform="translate(44,44)"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onAddChild("right", nodeDatum.nodeId);
+                    }}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <circle r="14" fill="#0f172a" stroke="#38bdf8" strokeWidth="1.5" />
+                    <text
+                      fill="#e0f2fe"
+                      stroke="none"
+                      x="0"
+                      y="4"
+                      textAnchor="middle"
+                      style={{ fontSize: 12, fontWeight: 700 }}
+                    >
+                      R+
+                    </text>
+                  </g>
+                ) : null}
               </g>
             );
           }}

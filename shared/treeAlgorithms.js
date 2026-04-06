@@ -86,7 +86,7 @@ export function normalizeTreeType(treeType) {
 export function createNode(value, options = {}) {
   return {
     id: options.id || createId(),
-    value: toNumber(value),
+    value: isFilledNodeValue(value) ? Number(value) : null,
     color: options.color || COLORS.BLACK,
     height: options.height || 1,
     left: options.left ? cloneTree(options.left) : null,
@@ -224,6 +224,63 @@ export function createBlankTreeFromTemplate(tree) {
     left: createBlankTreeFromTemplate(tree.left),
     right: createBlankTreeFromTemplate(tree.right),
   };
+}
+
+export function addRootNode(tree, value = null, options = {}) {
+  if (tree) {
+    return cloneTree(tree);
+  }
+
+  return createNode(value, options);
+}
+
+export function addChildNode(tree, parentId, side, value = null, options = {}) {
+  if (!tree || !parentId || !["left", "right"].includes(side)) {
+    return cloneTree(tree);
+  }
+
+  const workingTree = cloneTree(tree);
+  const parent = findNodeById(workingTree, parentId);
+
+  if (!parent || parent[side]) {
+    return workingTree;
+  }
+
+  parent[side] = createNode(value, options);
+  return workingTree;
+}
+
+export function removeNodeById(tree, nodeId) {
+  if (!tree || !nodeId) {
+    return cloneTree(tree);
+  }
+
+  if (tree.id === nodeId) {
+    return null;
+  }
+
+  const workingTree = cloneTree(tree);
+
+  function detach(node) {
+    if (!node) {
+      return false;
+    }
+
+    if (node.left?.id === nodeId) {
+      node.left = null;
+      return true;
+    }
+
+    if (node.right?.id === nodeId) {
+      node.right = null;
+      return true;
+    }
+
+    return detach(node.left) || detach(node.right);
+  }
+
+  detach(workingTree);
+  return workingTree;
 }
 
 function createRecorder(enabled) {
@@ -1364,6 +1421,8 @@ export function treeToD3Data(tree) {
       color: tree.color,
       height: tree.height,
       isEmpty: !isFilledNodeValue(tree.value),
+      hasLeftChild: Boolean(tree.left),
+      hasRightChild: Boolean(tree.right),
     },
     nodeId: tree.id,
     children: [tree.left, tree.right].filter(Boolean).map((child) => treeToD3Data(child)),
