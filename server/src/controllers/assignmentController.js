@@ -114,3 +114,26 @@ export const updateAssignment = asyncHandler(async (req, res) => {
     solutionPreview: buildPreview(assignment.toObject()),
   });
 });
+
+export const deleteAssignment = asyncHandler(async (req, res) => {
+  const assignment = await Assignment.findById(req.params.assignmentId);
+
+  if (!assignment) {
+    const error = new Error("Assignment not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (String(assignment.teacher) !== String(req.user._id)) {
+    const error = new Error("You can only delete your own assignments.");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  await Submission.deleteMany({ assignment: assignment._id });
+  await assignment.deleteOne();
+
+  res.status(200).json({
+    message: "Assignment deleted successfully.",
+  });
+});

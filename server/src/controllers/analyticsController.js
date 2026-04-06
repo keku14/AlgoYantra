@@ -48,26 +48,83 @@ export const getTeacherOverview = asyncHandler(async (req, res) => {
     : 0;
 
   const studentMap = new Map();
+  const studentReportMap = new Map();
   const mistakeMap = new Map();
   const treeMap = new Map();
 
-  submissions.forEach((submission) => {
-    const studentKey = String(submission.student._id);
-    const current = studentMap.get(studentKey) || {
-      studentId: submission.student._id,
-      name: submission.student.name,
+  students.forEach((student) => {
+    const studentKey = String(student._id);
+
+    studentMap.set(studentKey, {
+      studentId: student._id,
+      name: student.name,
+      email: student.email,
       averageScore: 0,
       attempts: 0,
       latestScore: 0,
-      xp: submission.student.xp,
-      level: submission.student.level,
-      streak: submission.student.streak,
-    };
+      xp: student.xp,
+      level: student.level,
+      streak: student.streak,
+    });
+
+    studentReportMap.set(studentKey, {
+      studentId: student._id,
+      name: student.name,
+      email: student.email,
+      marksEarned: 0,
+      marksPossible: assignments.reduce((sum, assignment) => sum + Number(assignment.xpReward || 0), 0),
+      attempts: 0,
+      averageScore: 0,
+      treeTypeBreakdown: {},
+      assignments: [],
+    });
+  });
+
+  submissions.forEach((submission) => {
+    const studentKey = String(submission.student._id);
+    const current = studentMap.get(studentKey);
 
     current.averageScore += submission.score;
     current.attempts += 1;
     current.latestScore = submission.score;
     studentMap.set(studentKey, current);
+
+    const report = studentReportMap.get(studentKey);
+    const possibleMarks = Number(submission.assignment?.xpReward || 0);
+    const earnedMarks = Math.round((Number(submission.score || 0) / 100) * possibleMarks);
+
+    report.attempts += 1;
+    report.averageScore += Number(submission.score || 0);
+    report.marksEarned += earnedMarks;
+    report.assignments.push({
+      submissionId: submission._id,
+      assignmentId: submission.assignment?._id,
+      title: submission.assignment?.title || "Assignment",
+      treeType: submission.assignment?.treeType || "unknown",
+      score: submission.score,
+      earnedMarks,
+      possibleMarks,
+      mistakes: submission.mistakes || [],
+      suggestions: submission.suggestions || [],
+      submittedAt: submission.submittedAt,
+    });
+
+    const treeTypeKey = submission.assignment?.treeType || "unknown";
+    if (!report.treeTypeBreakdown[treeTypeKey]) {
+      report.treeTypeBreakdown[treeTypeKey] = {
+        treeType: treeTypeKey,
+        attempts: 0,
+        averageScore: 0,
+        marksEarned: 0,
+        marksPossible: 0,
+      };
+    }
+
+    const treeEntry = report.treeTypeBreakdown[treeTypeKey];
+    treeEntry.attempts += 1;
+    treeEntry.averageScore += Number(submission.score || 0);
+    treeEntry.marksEarned += earnedMarks;
+    treeEntry.marksPossible += possibleMarks;
 
     submission.mistakes.forEach((mistake) => {
       const bucket = bucketMistake(mistake);
@@ -89,7 +146,23 @@ export const getTeacherOverview = asyncHandler(async (req, res) => {
   const studentPerformance = [...studentMap.values()]
     .map((item) => ({
       ...item,
-      averageScore: round(item.averageScore / item.attempts),
+      averageScore: item.attempts ? round(item.averageScore / item.attempts) : 0,
+    }))
+    .sort((left, right) => right.averageScore - left.averageScore);
+
+  const studentReports = [...studentReportMap.values()]
+    .map((report) => ({
+      ...report,
+      averageScore: report.attempts ? round(report.averageScore / report.attempts) : 0,
+      treeTypeBreakdown: Object.values(report.treeTypeBreakdown)
+        .map((entry) => ({
+          ...entry,
+          averageScore: entry.attempts ? round(entry.averageScore / entry.attempts) : 0,
+        }))
+        .sort((left, right) => right.averageScore - left.averageScore),
+      assignments: report.assignments.sort(
+        (left, right) => new Date(right.submittedAt) - new Date(left.submittedAt),
+      ),
     }))
     .sort((left, right) => right.averageScore - left.averageScore);
 
@@ -118,6 +191,7 @@ export const getTeacherOverview = asyncHandler(async (req, res) => {
       liveSessionsEnabled: assignments.filter((assignment) => assignment.liveSessionEnabled).length,
     },
     studentPerformance,
+    studentReports,
     mistakeHeatmap,
     treeTypePerformance,
     recentSubmissions: submissions.slice(0, 6),

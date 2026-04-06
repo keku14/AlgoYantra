@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import { createTreeFromValues, getTreeTypeMeta } from "@algoyantra/shared";
@@ -27,9 +27,33 @@ function parsePromptValues(value) {
     .filter((item) => Number.isFinite(item));
 }
 
-export default function AssignmentEditor({ onCreated }) {
+function formatDateValue(dateValue) {
+  if (!dateValue) {
+    return "";
+  }
+
+  return new Date(dateValue).toISOString().slice(0, 10);
+}
+
+export default function AssignmentEditor({ assignment = null, onSaved, onCancel }) {
   const [form, setForm] = useState(defaultForm);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!assignment) {
+      setForm(defaultForm);
+      return;
+    }
+
+    setForm({
+      title: assignment.title || "",
+      description: assignment.description || "",
+      treeType: assignment.treeType || "bst",
+      xpReward: Number(assignment.xpReward || 120),
+      dueDate: formatDateValue(assignment.dueDate),
+      promptValues: Array.isArray(assignment.promptValues) ? assignment.promptValues.join(", ") : "",
+    });
+  }, [assignment]);
 
   function updateField(name, value) {
     setForm((current) => ({
@@ -66,19 +90,33 @@ export default function AssignmentEditor({ onCreated }) {
         operations: [],
       };
 
-      const { data } = await api.post("/assignments", payload);
-      toast.success("Assignment published.");
-      onCreated?.(data.assignment);
+      const { data } = assignment
+        ? await api.put(`/assignments/${assignment._id}`, payload)
+        : await api.post("/assignments", payload);
+      toast.success(assignment ? "Assignment updated." : "Assignment published.");
+      onSaved?.(data.assignment);
       setForm(defaultForm);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to create assignment.");
+      toast.error(error.response?.data?.message || `Failed to ${assignment ? "update" : "create"} assignment.`);
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <SectionCard title="Assignment editor" eyebrow="Teacher tooling">
+    <SectionCard
+      title={assignment ? "Edit assignment" : "Assignment editor"}
+      eyebrow="Teacher tooling"
+      actions={assignment ? (
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-slate-200 light:border-slate-200 light:text-slate-700"
+        >
+          Cancel edit
+        </button>
+      ) : null}
+    >
       <div className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
@@ -155,7 +193,7 @@ export default function AssignmentEditor({ onCreated }) {
             disabled={saving}
             className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 font-semibold text-slate-950"
           >
-            {saving ? "Publishing..." : "Publish assignment"}
+            {saving ? (assignment ? "Saving..." : "Publishing...") : (assignment ? "Save changes" : "Publish assignment")}
           </button>
         </form>
 
