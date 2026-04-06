@@ -5,6 +5,7 @@ import {
   BookOpenCheck,
   CheckCircle2,
   CircleAlert,
+  Eye,
   GraduationCap,
   LineChart,
   PanelLeftClose,
@@ -45,6 +46,7 @@ export default function StudentDashboard() {
   const [assignmentFilter, setAssignmentFilter] = useState("pending");
   const [selectedAnalyticsTreeType, setSelectedAnalyticsTreeType] = useState(null);
   const [selectedAnalyticsAssignmentId, setSelectedAnalyticsAssignmentId] = useState(null);
+  const [analyticsTreePreview, setAnalyticsTreePreview] = useState(null);
   const solverHistory = useHistoryState(null);
 
   async function loadDashboard() {
@@ -618,7 +620,21 @@ export default function StudentDashboard() {
                                     Submitted tree
                                   </h4>
                                 </div>
-                                <ArrowRightLeft className="text-cyan-200" size={18} />
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setAnalyticsTreePreview({
+                                      title: "Submitted tree",
+                                      eyebrow: "Your answer",
+                                      tree: selectedAnalyticsAssignment.submittedTree,
+                                    })}
+                                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 light:border-slate-200 light:bg-white light:text-slate-700"
+                                  >
+                                    <Eye size={16} />
+                                    View tree
+                                  </button>
+                                  <ArrowRightLeft className="text-cyan-200" size={18} />
+                                </div>
                               </div>
                               <TreeVisualizer tree={selectedAnalyticsAssignment.submittedTree} height={360} />
                             </div>
@@ -633,7 +649,21 @@ export default function StudentDashboard() {
                                     Correct tree
                                   </h4>
                                 </div>
-                                <CheckCircle2 className="text-emerald-200" size={18} />
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setAnalyticsTreePreview({
+                                      title: "Correct tree",
+                                      eyebrow: "Expected answer",
+                                      tree: selectedAnalyticsAssignment.correctTree,
+                                    })}
+                                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 light:border-slate-200 light:bg-white light:text-slate-700"
+                                  >
+                                    <Eye size={16} />
+                                    View tree
+                                  </button>
+                                  <CheckCircle2 className="text-emerald-200" size={18} />
+                                </div>
                               </div>
                               <TreeVisualizer tree={selectedAnalyticsAssignment.correctTree} height={360} />
                             </div>
@@ -713,6 +743,37 @@ export default function StudentDashboard() {
               </div>
             </SectionCard>
           ) : null}
+        </div>
+      ) : null}
+
+      {analyticsTreePreview ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 px-4 py-8">
+          <div className="glass-panel section-gradient flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden p-5">
+            <div className="flex items-center justify-between gap-3 pb-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-indigo-300/80 light:text-indigo-600">
+                  {analyticsTreePreview.eyebrow}
+                </p>
+                <h3 className="mt-2 font-display text-2xl font-semibold text-white light:text-slate-900">
+                  {analyticsTreePreview.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAnalyticsTreePreview(null)}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10 light:border-slate-200 light:bg-slate-50 light:text-slate-700"
+                aria-label="Close tree preview"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto pr-2">
+              <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/25 p-4 light:border-slate-200 light:bg-slate-50">
+                <TreeVisualizer tree={analyticsTreePreview.tree} height={520} showStats />
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
     </AppShell>
