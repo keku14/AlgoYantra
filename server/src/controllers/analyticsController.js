@@ -34,6 +34,7 @@ function bucketMistake(mistake) {
 export const getTeacherOverview = asyncHandler(async (req, res) => {
   const assignments = await Assignment.find({ teacher: req.user._id }).lean();
   const assignmentIds = assignments.map((assignment) => assignment._id);
+  const totalPossibleMarks = assignments.reduce((sum, assignment) => sum + Number(assignment.xpReward || 0), 0);
   const submissions = await Submission.find({
     assignment: { $in: assignmentIds },
   })
@@ -42,7 +43,6 @@ export const getTeacherOverview = asyncHandler(async (req, res) => {
     .lean();
 
   const students = await User.find({ role: "student" }).lean();
-  const totalStudents = students.length;
   const averageScore = submissions.length
     ? round(submissions.reduce((total, item) => total + item.score, 0) / submissions.length)
     : 0;
@@ -52,36 +52,57 @@ export const getTeacherOverview = asyncHandler(async (req, res) => {
   const mistakeMap = new Map();
   const treeMap = new Map();
 
+  function ensureStudentEntry(studentLike, fallbackKey) {
+    const rawId = studentLike?._id ?? fallbackKey;
+
+    if (!rawId) {
+      return null;
+    }
+
+    const studentKey = String(rawId);
+
+    if (!studentMap.has(studentKey)) {
+      studentMap.set(studentKey, {
+        studentId: rawId,
+        name: studentLike?.name || "Student",
+        email: studentLike?.email || "",
+        averageScore: 0,
+        attempts: 0,
+        latestScore: 0,
+        xp: Number(studentLike?.xp || 0),
+        level: Number(studentLike?.level || 1),
+        streak: Number(studentLike?.streak || 0),
+      });
+    }
+
+    if (!studentReportMap.has(studentKey)) {
+      studentReportMap.set(studentKey, {
+        studentId: rawId,
+        name: studentLike?.name || "Student",
+        email: studentLike?.email || "",
+        marksEarned: 0,
+        marksPossible: totalPossibleMarks,
+        attempts: 0,
+        averageScore: 0,
+        treeTypeBreakdown: {},
+        assignments: [],
+      });
+    }
+
+    return studentKey;
+  }
+
   students.forEach((student) => {
-    const studentKey = String(student._id);
-
-    studentMap.set(studentKey, {
-      studentId: student._id,
-      name: student.name,
-      email: student.email,
-      averageScore: 0,
-      attempts: 0,
-      latestScore: 0,
-      xp: student.xp,
-      level: student.level,
-      streak: student.streak,
-    });
-
-    studentReportMap.set(studentKey, {
-      studentId: student._id,
-      name: student.name,
-      email: student.email,
-      marksEarned: 0,
-      marksPossible: assignments.reduce((sum, assignment) => sum + Number(assignment.xpReward || 0), 0),
-      attempts: 0,
-      averageScore: 0,
-      treeTypeBreakdown: {},
-      assignments: [],
-    });
+    ensureStudentEntry(student, student._id);
   });
 
   submissions.forEach((submission) => {
-    const studentKey = String(submission.student._id);
+    const studentKey = ensureStudentEntry(submission.student, submission.student);
+
+    if (!studentKey) {
+      return;
+    }
+
     const current = studentMap.get(studentKey);
 
     current.averageScore += submission.score;
@@ -165,6 +186,7 @@ export const getTeacherOverview = asyncHandler(async (req, res) => {
       ),
     }))
     .sort((left, right) => right.averageScore - left.averageScore);
+  const totalStudents = studentReportMap.size;
 
   const mistakeHeatmap = [...mistakeMap.entries()].map(([category, value]) => ({
     category,
