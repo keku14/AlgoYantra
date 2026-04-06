@@ -108,8 +108,8 @@ export default function TeacherDashboard() {
     ));
   }, [sortedStudentReports, studentSearch]);
   const visibleStudentReports = useMemo(
-    () => (studentSearch.trim() ? filteredStudentReports : filteredStudentReports.slice(0, 5)),
-    [filteredStudentReports, studentSearch],
+    () => filteredStudentReports,
+    [filteredStudentReports],
   );
   const selectedStudentReport = useMemo(
     () => filteredStudentReports.find((student) => String(student.studentId) === String(selectedStudentId)) || null,
