@@ -11,6 +11,7 @@ import {
   PanelLeftOpen,
   Target,
   Trophy,
+  X,
 } from "lucide-react";
 import { collectValues, countNodes, treeHeight, traverseTree } from "@algoyantra/shared";
 
@@ -89,6 +90,12 @@ export default function StudentDashboard() {
     solverHistory.reset(null);
     setResult(null);
   }, [selectedAssignmentId]);
+
+  useEffect(() => {
+    if (assignmentFilter === "attempted") {
+      setSelectedAssignmentId(null);
+    }
+  }, [assignmentFilter]);
 
   async function submitAssignment() {
     if (!selectedAssignment) {
@@ -186,17 +193,12 @@ export default function StudentDashboard() {
       return;
     }
 
-    if (!selectedAnalyticsTreeType) {
-      setSelectedAnalyticsTreeType(treeTypePerformanceGroups[0].treeType);
-      return;
-    }
-
     const stillExists = treeTypePerformanceGroups.some(
       (group) => group.treeType === selectedAnalyticsTreeType,
     );
 
     if (!stillExists) {
-      setSelectedAnalyticsTreeType(treeTypePerformanceGroups[0].treeType);
+      setSelectedAnalyticsTreeType(null);
     }
   }, [selectedAnalyticsTreeType, treeTypePerformanceGroups]);
 
@@ -210,17 +212,12 @@ export default function StudentDashboard() {
       return;
     }
 
-    if (!selectedAnalyticsAssignmentId) {
-      setSelectedAnalyticsAssignmentId(selectedTreeTypeGroup.assignments[0].id);
-      return;
-    }
-
     const stillExists = selectedTreeTypeGroup.assignments.some(
       (assignmentEntry) => assignmentEntry.id === selectedAnalyticsAssignmentId,
     );
 
     if (!stillExists) {
-      setSelectedAnalyticsAssignmentId(selectedTreeTypeGroup.assignments[0].id);
+      setSelectedAnalyticsAssignmentId(null);
     }
   }, [selectedAnalyticsAssignmentId, selectedTreeTypeGroup]);
 
@@ -400,18 +397,20 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          <StudentAssignmentWorkspace
-            assignment={selectedAssignment}
-            tree={solverHistory.present}
-            onTreeChange={solverHistory.setPresent}
-            onUndo={solverHistory.undo}
-            onRedo={solverHistory.redo}
-            canUndo={solverHistory.canUndo}
-            canRedo={solverHistory.canRedo}
-            onSubmit={submitAssignment}
-            onClose={handleAssignmentClose}
-            submitting={submittingAssignment}
-          />
+          {assignmentFilter === "pending" ? (
+            <StudentAssignmentWorkspace
+              assignment={selectedAssignment}
+              tree={solverHistory.present}
+              onTreeChange={solverHistory.setPresent}
+              onUndo={solverHistory.undo}
+              onRedo={solverHistory.redo}
+              canUndo={solverHistory.canUndo}
+              canRedo={solverHistory.canRedo}
+              onSubmit={submitAssignment}
+              onClose={handleAssignmentClose}
+              submitting={submittingAssignment}
+            />
+          ) : null}
         </div>
       ) : null}
 
@@ -474,6 +473,19 @@ export default function StudentDashboard() {
             <SectionCard
               title={`${formatTreeTypeLabel(selectedTreeTypeGroup.treeType)} performance`}
               eyebrow="Assignment-by-assignment breakdown"
+              actions={(
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedAnalyticsTreeType(null);
+                    setSelectedAnalyticsAssignmentId(null);
+                  }}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10 light:border-slate-200 light:bg-white light:text-slate-700"
+                  aria-label="Clear analytics selection"
+                >
+                  <X size={18} />
+                </button>
+              )}
             >
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
@@ -542,13 +554,23 @@ export default function StudentDashboard() {
                             Submitted on {formatDate(selectedAnalyticsAssignment.submittedAt)}
                           </p>
                         </div>
-                        <div className="rounded-[1.25rem] border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-right text-cyan-50 light:text-cyan-700">
-                          <div className="font-display text-3xl font-bold">
-                            {selectedAnalyticsAssignment.score}%
+                        <div className="flex items-start gap-3">
+                          <div className="rounded-[1.25rem] border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-right text-cyan-50 light:text-cyan-700">
+                            <div className="font-display text-3xl font-bold">
+                              {selectedAnalyticsAssignment.score}%
+                            </div>
+                            <p className="text-sm">
+                              {selectedAnalyticsAssignment.earnedMarks}/{selectedAnalyticsAssignment.possibleMarks} marks
+                            </p>
                           </div>
-                          <p className="text-sm">
-                            {selectedAnalyticsAssignment.earnedMarks}/{selectedAnalyticsAssignment.possibleMarks} marks
-                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAnalyticsAssignmentId(null)}
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10 light:border-slate-200 light:bg-slate-50 light:text-slate-700"
+                            aria-label="Clear assignment review"
+                          >
+                            <X size={18} />
+                          </button>
                         </div>
                       </div>
                     </div>

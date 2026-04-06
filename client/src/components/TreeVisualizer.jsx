@@ -13,6 +13,8 @@ export default function TreeVisualizer({
   onNodeValueChange,
   editableNodeId,
   height = 420,
+  compact = false,
+  showStats = true,
 }) {
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 700, height });
@@ -38,7 +40,18 @@ export default function TreeVisualizer({
 
   const d3Data = treeToD3Data(tree);
   const nodeCount = countNodes(tree);
-  const translateY = nodeCount <= 1 ? dimensions.height / 2 : 70;
+  const currentTreeHeight = treeHeight(tree);
+  const translateY = nodeCount <= 1
+    ? dimensions.height / 2
+    : compact
+      ? Math.max(88, dimensions.height * 0.22)
+      : 70;
+  const zoom = compact
+    ? Math.max(
+        0.42,
+        Math.min(0.92, 0.96 - Math.max(0, currentTreeHeight - 2) * 0.1 - Math.max(0, nodeCount - 7) * 0.015),
+      )
+    : 1;
 
   useEffect(() => {
     if (!editableNodeId || !tree) {
@@ -94,8 +107,9 @@ export default function TreeVisualizer({
           data={d3Data}
           pathFunc="elbow"
           translate={{ x: dimensions.width / 2, y: translateY }}
+          zoom={zoom}
           orientation="vertical"
-          separation={{ siblings: 1.3, nonSiblings: 1.6 }}
+          separation={compact ? { siblings: 1.05, nonSiblings: 1.2 } : { siblings: 1.3, nonSiblings: 1.6 }}
           zoomable
           styles={{
             links: {
@@ -237,16 +251,18 @@ export default function TreeVisualizer({
         />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 light:border-slate-200 light:bg-white light:text-slate-700">
-          <span className="font-semibold text-white light:text-slate-900">Nodes:</span>{" "}
-          {countNodes(tree)}
+      {showStats ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 light:border-slate-200 light:bg-white light:text-slate-700">
+            <span className="font-semibold text-white light:text-slate-900">Nodes:</span>{" "}
+            {countNodes(tree)}
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 light:border-slate-200 light:bg-white light:text-slate-700">
+            <span className="font-semibold text-white light:text-slate-900">Height:</span>{" "}
+            {treeHeight(tree)}
+          </div>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 light:border-slate-200 light:bg-white light:text-slate-700">
-          <span className="font-semibold text-white light:text-slate-900">Height:</span>{" "}
-          {treeHeight(tree)}
-        </div>
-      </div>
+      ) : null}
     </div>
   );
 }

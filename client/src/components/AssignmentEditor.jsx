@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { Eye, X } from "lucide-react";
 
 import { createTreeFromValues, getTreeTypeMeta } from "@algoyantra/shared";
 
@@ -38,6 +39,7 @@ function formatDateValue(dateValue) {
 export default function AssignmentEditor({ assignment = null, onSaved, onCancel }) {
   const [form, setForm] = useState(defaultForm);
   const [saving, setSaving] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   useEffect(() => {
     if (!assignment) {
@@ -96,6 +98,7 @@ export default function AssignmentEditor({ assignment = null, onSaved, onCancel 
       toast.success(assignment ? "Assignment updated." : "Assignment published.");
       onSaved?.(data.assignment);
       setForm(defaultForm);
+      setIsPreviewOpen(false);
     } catch (error) {
       toast.error(error.response?.data?.message || `Failed to ${assignment ? "update" : "create"} assignment.`);
     } finally {
@@ -199,15 +202,56 @@ export default function AssignmentEditor({ assignment = null, onSaved, onCancel 
 
         <div className="space-y-4">
           <div className="rounded-[2rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
-              Solution preview
-            </p>
-            <div className="mt-4">
-              <TreeVisualizer tree={solutionTree} height={360} />
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
+                Solution preview
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsPreviewOpen(true)}
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 light:border-slate-200 light:bg-slate-50 light:text-slate-700"
+              >
+                <Eye size={16} />
+                View tree
+              </button>
+            </div>
+            <div className="mt-4 rounded-[1.5rem] border border-white/10 bg-slate-950/25 p-3 light:border-slate-200 light:bg-slate-50">
+              <TreeVisualizer tree={solutionTree} height={360} compact showStats={false} />
             </div>
           </div>
         </div>
       </div>
+
+      {isPreviewOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 px-4 py-8">
+          <div className="glass-panel section-gradient flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden p-5">
+            <div className="flex items-center justify-between gap-3 pb-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-indigo-300/80 light:text-indigo-600">
+                  Solution preview
+                </p>
+                <h3 className="mt-2 font-display text-2xl font-semibold text-white light:text-slate-900">
+                  {form.title || "Assignment tree"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPreviewOpen(false)}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10 light:border-slate-200 light:bg-slate-50 light:text-slate-700"
+                aria-label="Close tree preview"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto pr-2">
+              <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/25 p-4 light:border-slate-200 light:bg-slate-50">
+                <TreeVisualizer tree={solutionTree} height={520} compact={false} showStats />
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </SectionCard>
   );
 }

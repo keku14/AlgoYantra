@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { Activity, BarChart3, Brain, FilePenLine, FileText, Target, Trash2, Trophy, Users } from "lucide-react";
+import { Activity, BarChart3, Brain, FilePenLine, FileText, Target, Trash2, Trophy, Users, X } from "lucide-react";
 
 import api from "../api/client.js";
 import AnalyticsCharts from "../components/AnalyticsCharts.jsx";
@@ -25,6 +25,7 @@ export default function TeacherDashboard() {
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(null);
   const [assignmentSubmissions, setAssignmentSubmissions] = useState([]);
   const [selectedStudentId, setSelectedStudentId] = useState(null);
+  const [studentSearch, setStudentSearch] = useState("");
   const [editingAssignmentId, setEditingAssignmentId] = useState(null);
   const [deletingAssignmentId, setDeletingAssignmentId] = useState(null);
   const [pendingDeleteAssignmentId, setPendingDeleteAssignmentId] = useState(null);
@@ -49,12 +50,6 @@ export default function TeacherDashboard() {
   useEffect(() => {
     loadDashboard();
   }, []);
-
-  useEffect(() => {
-    if (!selectedAssignmentId && assignments.length) {
-      setSelectedAssignmentId(assignments[0]._id);
-    }
-  }, [assignments, selectedAssignmentId]);
 
   useEffect(() => {
     async function loadAssignmentSubmissions() {
@@ -97,30 +92,44 @@ export default function TeacherDashboard() {
     : 0;
   const pendingStudents = Math.max(overview.totalStudents - assignmentSubmissions.length, 0);
   const studentReports = analytics?.studentReports || [];
+  const sortedStudentReports = useMemo(
+    () => [...studentReports].sort((left, right) => String(left.name || "").localeCompare(String(right.name || ""))),
+    [studentReports],
+  );
+  const filteredStudentReports = useMemo(() => {
+    const normalizedSearch = studentSearch.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+      return sortedStudentReports;
+    }
+
+    return sortedStudentReports.filter((student) => (
+      String(student.name || "").toLowerCase().includes(normalizedSearch)
+    ));
+  }, [sortedStudentReports, studentSearch]);
+  const visibleStudentReports = useMemo(
+    () => (studentSearch.trim() ? filteredStudentReports : filteredStudentReports.slice(0, 5)),
+    [filteredStudentReports, studentSearch],
+  );
   const selectedStudentReport = useMemo(
-    () => studentReports.find((student) => String(student.studentId) === String(selectedStudentId)) || null,
-    [selectedStudentId, studentReports],
+    () => filteredStudentReports.find((student) => String(student.studentId) === String(selectedStudentId)) || null,
+    [filteredStudentReports, selectedStudentId],
   );
 
   useEffect(() => {
-    if (!studentReports.length) {
+    if (!filteredStudentReports.length) {
       setSelectedStudentId(null);
       return;
     }
 
-    if (!selectedStudentId) {
-      setSelectedStudentId(String(studentReports[0].studentId));
-      return;
-    }
-
-    const stillExists = studentReports.some(
+    const stillExists = filteredStudentReports.some(
       (student) => String(student.studentId) === String(selectedStudentId),
     );
 
     if (!stillExists) {
-      setSelectedStudentId(String(studentReports[0].studentId));
+      setSelectedStudentId(null);
     }
-  }, [selectedStudentId, studentReports]);
+  }, [filteredStudentReports, selectedStudentId]);
 
   function formatTreeTypeLabel(treeType) {
     return String(treeType || "")
@@ -311,6 +320,16 @@ export default function TeacherDashboard() {
             <SectionCard
               title={selectedAssignment ? selectedAssignment.title : "Assignment analytics"}
               eyebrow="Submission results"
+              actions={selectedAssignment ? (
+                <button
+                  type="button"
+                  onClick={() => setSelectedAssignmentId(null)}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10 light:border-slate-200 light:bg-white light:text-slate-700"
+                  aria-label="Clear assignment selection"
+                >
+                  <X size={18} />
+                </button>
+              ) : null}
             >
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
@@ -367,39 +386,73 @@ export default function TeacherDashboard() {
             treeTypePerformance={analytics?.treeTypePerformance || []}
           />
 
-          <SectionCard title="Student performance" eyebrow="Class overview">
+          <SectionCard
+            title="Student performance"
+            eyebrow="Class overview"
+            actions={selectedStudentReport ? (
+              <button
+                type="button"
+                onClick={() => setSelectedStudentId(null)}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10 light:border-slate-200 light:bg-white light:text-slate-700"
+                aria-label="Clear student selection"
+              >
+                <X size={18} />
+              </button>
+            ) : null}
+          >
             {studentReports.length ? (
               <div className="grid gap-6 xl:grid-cols-[320px,minmax(0,1fr)]">
-                <div className="space-y-3">
-                  {studentReports.map((student) => (
-                    <button
-                      key={student.studentId}
-                      type="button"
-                      onClick={() => setSelectedStudentId(String(student.studentId))}
-                      className={`w-full rounded-[1.5rem] border px-4 py-4 text-left transition ${
-                        String(selectedStudentId) === String(student.studentId)
-                          ? "border-cyan-300/60 bg-cyan-400/10 text-cyan-50"
-                          : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 light:border-slate-200 light:bg-white light:text-slate-700"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-white light:text-slate-900">{student.name}</p>
-                          <p className="mt-1 text-sm text-slate-400 light:text-slate-600">
-                            {student.email}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-display text-xl font-bold text-cyan-200 light:text-cyan-700">
-                            {student.averageScore}%
+                <div className="space-y-4">
+                  <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
+                      Search students
+                    </p>
+                    <input
+                      type="text"
+                      value={studentSearch}
+                      onChange={(event) => setStudentSearch(event.target.value)}
+                      placeholder="Search by student name"
+                      className="mt-3 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white light:border-slate-200 light:bg-white light:text-slate-900"
+                    />
+                  </div>
+
+                  <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-3 light:border-slate-200 light:bg-white">
+                    <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                      {visibleStudentReports.length ? visibleStudentReports.map((student) => (
+                        <button
+                          key={student.studentId}
+                          type="button"
+                          onClick={() => setSelectedStudentId(String(student.studentId))}
+                          className={`w-full rounded-[1.5rem] border px-4 py-4 text-left transition ${
+                            String(selectedStudentId) === String(student.studentId)
+                              ? "border-cyan-300/60 bg-cyan-400/10 text-cyan-50"
+                              : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 light:border-slate-200 light:bg-slate-50 light:text-slate-700"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="font-medium text-white light:text-slate-900">{student.name}</p>
+                              <p className="mt-1 text-sm text-slate-400 light:text-slate-600">
+                                {student.email}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-display text-xl font-bold text-cyan-200 light:text-cyan-700">
+                                {student.averageScore}%
+                              </div>
+                              <p className="text-sm text-slate-400 light:text-slate-600">
+                                {student.marksEarned}/{student.marksPossible} Marks
+                              </p>
+                            </div>
                           </div>
-                          <p className="text-sm text-slate-400 light:text-slate-600">
-                            {student.marksEarned}/{student.marksPossible} Marks
-                          </p>
+                        </button>
+                      )) : (
+                        <div className="rounded-[1.5rem] border border-dashed border-white/15 p-5 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
+                          No students matched your search.
                         </div>
-                      </div>
-                    </button>
-                  ))}
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {selectedStudentReport ? (
@@ -428,11 +481,17 @@ export default function TeacherDashboard() {
                       </div>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-4">
                       <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
                         <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Assignments attempted</p>
                         <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
                           {selectedStudentReport.attempts}
+                        </div>
+                      </div>
+                      <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
+                        <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Overall score</p>
+                        <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
+                          {selectedStudentReport.averageScore}%
                         </div>
                       </div>
                       <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
@@ -445,12 +504,9 @@ export default function TeacherDashboard() {
                         </div>
                       </div>
                       <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                        <div className="flex items-center gap-2 text-slate-400 light:text-slate-600">
-                          <FileText size={16} />
-                          <p className="text-xs uppercase tracking-[0.24em]">Report status</p>
-                        </div>
+                        <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Overall marks</p>
                         <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
-                          {selectedStudentReport.attempts ? "Active" : "Pending"}
+                          {selectedStudentReport.marksEarned}/{selectedStudentReport.marksPossible}
                         </div>
                       </div>
                     </div>
@@ -491,8 +547,36 @@ export default function TeacherDashboard() {
                         )}
                       </div>
                     </div>
+
+                    <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-5 light:border-slate-200 light:bg-white">
+                      <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
+                        Overall report summary
+                      </p>
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <div className="rounded-[1.25rem] border border-white/10 bg-slate-950/25 p-4 light:border-slate-200 light:bg-slate-50">
+                          <p className="text-sm font-semibold text-white light:text-slate-900">
+                            Performance snapshot
+                          </p>
+                          <p className="mt-2 text-sm leading-7 text-slate-300 light:text-slate-700">
+                            {selectedStudentReport.name} has completed {selectedStudentReport.attempts} assignment{selectedStudentReport.attempts === 1 ? "" : "s"} and currently holds an overall score of {selectedStudentReport.averageScore}%.
+                          </p>
+                        </div>
+                        <div className="rounded-[1.25rem] border border-white/10 bg-slate-950/25 p-4 light:border-slate-200 light:bg-slate-50">
+                          <p className="text-sm font-semibold text-white light:text-slate-900">
+                            Marks summary
+                          </p>
+                          <p className="mt-2 text-sm leading-7 text-slate-300 light:text-slate-700">
+                            Total marks earned are {selectedStudentReport.marksEarned} out of {selectedStudentReport.marksPossible}, across {selectedStudentReport.treeTypeBreakdown.length} tracked tree concept{selectedStudentReport.treeTypeBreakdown.length === 1 ? "" : "s"}.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                ) : null}
+                ) : (
+                  <div className="rounded-[1.75rem] border border-dashed border-white/15 p-6 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
+                    Select a student to view the report card.
+                  </div>
+                )}
               </div>
             ) : (
               <div className="rounded-[1.5rem] border border-dashed border-white/15 p-6 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
