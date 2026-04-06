@@ -162,7 +162,7 @@ export default function TeacherDashboard() {
       {pendingDeleteAssignment ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 px-4">
           <div className="glass-panel section-gradient w-full max-w-md p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-300/80">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-300/80 light:text-rose-700">
               Confirm deletion
             </p>
             <h2 className="mt-2 font-display text-2xl font-semibold text-white light:text-slate-900">
@@ -227,7 +227,7 @@ export default function TeacherDashboard() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                      <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
                         {assignment.treeType}
                       </p>
                       <h3 className="mt-2 font-display text-xl font-semibold text-white light:text-slate-900">
@@ -294,7 +294,7 @@ export default function TeacherDashboard() {
                         : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 light:border-slate-200 light:bg-white light:text-slate-700"
                     }`}
                   >
-                    <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                    <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
                       {assignment.treeType}
                     </p>
                     <h3 className="mt-2 font-display text-lg font-semibold">{assignment.title}</h3>
@@ -314,19 +314,19 @@ export default function TeacherDashboard() {
             >
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Submitted</p>
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Submitted</p>
                   <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
                     {assignmentSubmissions.length}
                   </div>
                 </div>
                 <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Pending</p>
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Pending</p>
                   <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
                     {pendingStudents}
                   </div>
                 </div>
                 <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Top score</p>
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Top score</p>
                   <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
                     {topScore}%
                   </div>
@@ -407,7 +407,7 @@ export default function TeacherDashboard() {
                     <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-5 light:border-slate-200 light:bg-white">
                       <div className="flex flex-wrap items-start justify-between gap-4">
                         <div>
-                          <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                          <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
                             Student report card
                           </p>
                           <h3 className="mt-2 font-display text-2xl font-semibold text-white light:text-slate-900">
@@ -430,13 +430,13 @@ export default function TeacherDashboard() {
 
                     <div className="grid gap-4 md:grid-cols-3">
                       <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                        <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Assignments attempted</p>
+                        <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Assignments attempted</p>
                         <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
                           {selectedStudentReport.attempts}
                         </div>
                       </div>
                       <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                        <div className="flex items-center gap-2 text-slate-400">
+                        <div className="flex items-center gap-2 text-slate-400 light:text-slate-600">
                           <BarChart3 size={16} />
                           <p className="text-xs uppercase tracking-[0.24em]">Tree-wise progress</p>
                         </div>
@@ -445,7 +445,7 @@ export default function TeacherDashboard() {
                         </div>
                       </div>
                       <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                        <div className="flex items-center gap-2 text-slate-400">
+                        <div className="flex items-center gap-2 text-slate-400 light:text-slate-600">
                           <FileText size={16} />
                           <p className="text-xs uppercase tracking-[0.24em]">Report status</p>
                         </div>
@@ -456,7 +456,7 @@ export default function TeacherDashboard() {
                     </div>
 
                     <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-5 light:border-slate-200 light:bg-white">
-                      <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                      <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
                         Tree-wise progress
                       </p>
                       <div className="mt-4 space-y-3">

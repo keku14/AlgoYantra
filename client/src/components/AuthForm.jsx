@@ -47,8 +47,8 @@ export default function AuthForm({ mode, loading, onSubmit }) {
               onClick={() => setForm((current) => ({ ...current, role }))}
               className={`rounded-2xl border px-4 py-3 text-sm font-medium capitalize transition ${
                 form.role === role
-                  ? "border-cyan-300/60 bg-cyan-400/15 text-cyan-100"
-                  : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 light:border-slate-200 light:bg-white light:text-slate-700"
+                  ? "border-indigo-300/50 bg-indigo-500/15 text-indigo-100 light:text-indigo-700"
+                  : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white light:border-slate-200 light:bg-white light:text-slate-700"
               }`}
             >
               {role}
@@ -86,7 +86,7 @@ export default function AuthForm({ mode, loading, onSubmit }) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 font-semibold text-slate-950 transition hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-70"
+        className="w-full rounded-full bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400 px-5 py-3 font-semibold text-white transition hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-70"
       >
         {loading ? "Working..." : mode === "login" ? "Enter platform" : "Create account"}
       </button>

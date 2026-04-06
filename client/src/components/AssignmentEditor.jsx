@@ -199,7 +199,7 @@ export default function AssignmentEditor({ assignment = null, onSaved, onCancel 
 
         <div className="space-y-4">
           <div className="rounded-[2rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
               Solution preview
             </p>
             <div className="mt-4">

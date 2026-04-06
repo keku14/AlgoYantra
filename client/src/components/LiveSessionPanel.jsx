@@ -143,7 +143,7 @@ export default function LiveSessionPanel({
         {session ? (
           <>
             <div className="rounded-[2rem] border border-emerald-300/15 bg-emerald-500/10 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-200">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-200 light:text-emerald-700">
                 Session code
               </p>
               <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
@@ -155,7 +155,7 @@ export default function LiveSessionPanel({
             </div>
 
             <div className="rounded-[2rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
                 Attendees
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
@@ -172,7 +172,7 @@ export default function LiveSessionPanel({
 
             {mode === "teacher" ? (
               <div className="rounded-[2rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
                   Poll students
                 </p>
                 <div className="mt-4 space-y-3">

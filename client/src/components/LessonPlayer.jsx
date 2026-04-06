@@ -36,7 +36,7 @@ export default function LessonPlayer({ track }) {
                   : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 light:border-slate-200 light:bg-white light:text-slate-700"
               }`}
             >
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{item.level}</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">{item.level}</p>
               <h3 className="mt-2 font-display text-lg font-semibold">{item.title}</h3>
               <p className="mt-2 text-sm leading-6">{item.summary}</p>
             </button>
@@ -45,7 +45,7 @@ export default function LessonPlayer({ track }) {
 
         <div className="space-y-4">
           <div className="rounded-[2rem] border border-white/10 bg-white/5 p-5 light:border-slate-200 light:bg-white">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
               Current topic
             </p>
             <h3 className="mt-3 font-display text-2xl font-bold text-white light:text-slate-900">
@@ -71,7 +71,7 @@ export default function LessonPlayer({ track }) {
           )}
 
           <div className="rounded-[2rem] border border-white/10 bg-white/5 p-5 light:border-slate-200 light:bg-white">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
               Progress
             </p>
             <p className="mt-3 text-sm text-slate-300 light:text-slate-700">

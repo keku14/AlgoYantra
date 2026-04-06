@@ -41,6 +41,7 @@ export default function StudentDashboard() {
   const [result, setResult] = useState(null);
   const [submittingAssignment, setSubmittingAssignment] = useState(false);
   const [isAssignmentRailOpen, setIsAssignmentRailOpen] = useState(true);
+  const [assignmentFilter, setAssignmentFilter] = useState("pending");
   const [selectedAnalyticsTreeType, setSelectedAnalyticsTreeType] = useState(null);
   const [selectedAnalyticsAssignmentId, setSelectedAnalyticsAssignmentId] = useState(null);
   const solverHistory = useHistoryState(null);
@@ -70,6 +71,12 @@ export default function StudentDashboard() {
 
   const selectedAssignment =
     assignments.find((assignment) => assignment._id === selectedAssignmentId) || null;
+
+  const filteredAssignments = useMemo(() => (
+    assignments.filter((assignment) => (
+      assignmentFilter === "attempted" ? Boolean(assignment.submission) : !assignment.submission
+    ))
+  ), [assignmentFilter, assignments]);
 
   useEffect(() => {
     if (selectedAssignmentId && !selectedAssignment) {
@@ -267,6 +274,12 @@ export default function StudentDashboard() {
     setIsAssignmentRailOpen(false);
   }
 
+  function handleAssignmentClose() {
+    setSelectedAssignmentId(null);
+    setAssignmentFilter("pending");
+    setIsAssignmentRailOpen(true);
+  }
+
   return (
     <AppShell
       title="Student dashboard"
@@ -304,21 +317,48 @@ export default function StudentDashboard() {
                 ) : null
               }
             >
+              <div className="mb-4 inline-flex rounded-full border border-white/10 bg-white/5 p-1 light:border-slate-200 light:bg-white/90">
+                {[
+                  { id: "pending", label: "Pending" },
+                  { id: "attempted", label: "Attempted" },
+                ].map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setAssignmentFilter(option.id)}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                      assignmentFilter === option.id
+                        ? "bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400 text-white shadow-glow"
+                        : "text-slate-300 hover:bg-white/10 hover:text-white light:text-slate-700 light:hover:bg-slate-100"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+
               <div className="space-y-3">
-                {assignments.length ? assignments.map((assignment) => (
+                {filteredAssignments.length ? filteredAssignments.map((assignment) => (
                   <button
                     key={assignment._id}
                     type="button"
-                    onClick={() => handleAssignmentSelect(assignment._id)}
+                    onClick={() => {
+                      if (!assignment.submission) {
+                        handleAssignmentSelect(assignment._id);
+                      }
+                    }}
+                    disabled={Boolean(assignment.submission)}
                     className={`w-full rounded-[1.5rem] border px-4 py-4 text-left transition ${
                       selectedAssignmentId === assignment._id
                         ? "border-cyan-300/50 bg-cyan-400/10 text-cyan-50"
-                        : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 light:border-slate-200 light:bg-white light:text-slate-700"
+                        : assignment.submission
+                          ? "border-white/10 bg-white/5 text-slate-300 opacity-70 light:border-slate-200 light:bg-white light:text-slate-600"
+                          : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 light:border-slate-200 light:bg-white light:text-slate-700"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                        <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
                           {assignment.treeType}
                         </p>
                         <h3 className="mt-2 font-display text-lg font-semibold">{assignment.title}</h3>
@@ -336,7 +376,9 @@ export default function StudentDashboard() {
                   </button>
                 )) : (
                   <div className="rounded-[1.5rem] border border-dashed border-white/15 p-6 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
-                    No assignments available yet.
+                    {assignmentFilter === "attempted"
+                      ? "No attempted assignments yet."
+                      : "No pending assignments right now."}
                   </div>
                 )}
               </div>
@@ -367,6 +409,7 @@ export default function StudentDashboard() {
             canUndo={solverHistory.canUndo}
             canRedo={solverHistory.canRedo}
             onSubmit={submitAssignment}
+            onClose={handleAssignmentClose}
             submitting={submittingAssignment}
           />
         </div>
@@ -404,7 +447,7 @@ export default function StudentDashboard() {
                   }`}
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                    <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
                       {formatTreeTypeLabel(group.treeType)}
                     </p>
                     <BookOpenCheck size={18} />
@@ -434,19 +477,19 @@ export default function StudentDashboard() {
             >
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Assignments</p>
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Assignments</p>
                   <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
                     {selectedTreeTypeGroup.attempts}
                   </div>
                 </div>
                 <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Marks</p>
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Marks</p>
                   <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
                     {selectedTreeTypeGroup.totalMarksEarned}/{selectedTreeTypeGroup.totalMarksPossible}
                   </div>
                 </div>
                 <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Average score</p>
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Average score</p>
                   <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
                     {selectedTreeTypeGroup.averageScore}%
                   </div>
@@ -489,7 +532,7 @@ export default function StudentDashboard() {
                     <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-5 light:border-slate-200 light:bg-white">
                       <div className="flex flex-wrap items-start justify-between gap-4">
                         <div>
-                          <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                          <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
                             Interactive assignment review
                           </p>
                           <h3 className="mt-2 font-display text-2xl font-semibold text-white light:text-slate-900">
@@ -517,25 +560,25 @@ export default function StudentDashboard() {
                         <>
                           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                             <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Submitted nodes</p>
+                              <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Submitted nodes</p>
                               <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
                                 {comparison.submittedNodeCount}
                               </div>
                             </div>
                             <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Correct nodes</p>
+                              <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Correct nodes</p>
                               <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
                                 {comparison.correctNodeCount}
                               </div>
                             </div>
                             <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Submitted height</p>
+                              <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Submitted height</p>
                               <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
                                 {comparison.submittedHeight}
                               </div>
                             </div>
                             <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Correct height</p>
+                              <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Correct height</p>
                               <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
                                 {comparison.correctHeight}
                               </div>
@@ -546,7 +589,7 @@ export default function StudentDashboard() {
                             <div className="rounded-[1.75rem] border border-cyan-300/15 bg-cyan-500/10 p-5">
                               <div className="mb-4 flex items-center justify-between gap-3">
                                 <div>
-                                  <p className="text-xs uppercase tracking-[0.24em] text-cyan-200/70">
+                                  <p className="text-xs uppercase tracking-[0.24em] text-cyan-200/70 light:text-cyan-700">
                                     Your answer
                                   </p>
                                   <h4 className="mt-2 font-display text-xl font-semibold text-white light:text-slate-900">
@@ -561,7 +604,7 @@ export default function StudentDashboard() {
                             <div className="rounded-[1.75rem] border border-emerald-300/15 bg-emerald-500/10 p-5">
                               <div className="mb-4 flex items-center justify-between gap-3">
                                 <div>
-                                  <p className="text-xs uppercase tracking-[0.24em] text-emerald-200/70">
+                                  <p className="text-xs uppercase tracking-[0.24em] text-emerald-200/70 light:text-emerald-700">
                                     Expected answer
                                   </p>
                                   <h4 className="mt-2 font-display text-xl font-semibold text-white light:text-slate-900">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Send } from "lucide-react";
+import { Send, X } from "lucide-react";
 
 import {
   addChildNode,
@@ -21,6 +21,7 @@ export default function StudentAssignmentWorkspace({
   canUndo,
   canRedo,
   onSubmit,
+  onClose,
   submitting = false,
 }) {
   const [selectedNodeId, setSelectedNodeId] = useState(null);
@@ -84,24 +85,37 @@ export default function StudentAssignmentWorkspace({
     <SectionCard title="Assignment workspace" eyebrow={assignment.treeType}>
       <div className="space-y-6">
         <header className="rounded-[2rem] border border-white/10 bg-white/5 p-5 light:border-slate-200 light:bg-white">
-          <h2 className="font-display text-3xl font-bold text-white light:text-slate-900">
-            {assignment.title}
-          </h2>
-          <p className="mt-3 text-sm leading-7 text-slate-300 light:text-slate-700">
-            {assignment.description}
-          </p>
-          <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-300 light:text-slate-700">
-            <span className="rounded-full border border-white/10 px-3 py-1.5 light:border-slate-200">
-              Vector: {promptValues.length ? promptValues.join(", ") : "Teacher has not added a vector yet"}
-            </span>
-            <span className="rounded-full border border-white/10 px-3 py-1.5 light:border-slate-200">
-              Marks: {assignment.xpReward}
-            </span>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="font-display text-3xl font-bold text-white light:text-slate-900">
+                {assignment.title}
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-slate-300 light:text-slate-700">
+                {assignment.description}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-300 light:text-slate-700">
+                <span className="rounded-full border border-white/10 px-3 py-1.5 light:border-slate-200">
+                  Vector: {promptValues.length ? promptValues.join(", ") : "Teacher has not added a vector yet"}
+                </span>
+                <span className="rounded-full border border-white/10 px-3 py-1.5 light:border-slate-200">
+                  Marks: {assignment.xpReward}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10 light:border-slate-200 light:bg-slate-50 light:text-slate-700"
+              aria-label="Close assignment"
+            >
+              <X size={18} />
+            </button>
           </div>
         </header>
 
         <div className="rounded-[2rem] border border-white/10 bg-slate-950/35 p-5 light:border-slate-200 light:bg-slate-50">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
             Blank workspace
           </p>
           <TreeVisualizer

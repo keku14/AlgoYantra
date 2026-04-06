@@ -13,18 +13,18 @@ export default function SectionCard({
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35 }}
-      className={clsx("glass-panel section-gradient p-6", className)}
+      className={clsx("glass-panel section-gradient p-6 md:p-7", className)}
     >
       {(title || eyebrow || actions) && (
         <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             {eyebrow ? (
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/85">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.24em] text-indigo-300/85 light:text-indigo-600">
                 {eyebrow}
               </p>
             ) : null}
             {title ? (
-              <h2 className="font-display text-xl font-semibold text-white light:text-slate-900">
+              <h2 className="font-display text-xl font-semibold text-slate-100 light:text-slate-900">
                 {title}
               </h2>
             ) : null}

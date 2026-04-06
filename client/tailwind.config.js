@@ -7,15 +7,15 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ["Space Grotesk", "sans-serif"],
-        body: ["Manrope", "sans-serif"],
+        display: ["Inter", "system-ui", "sans-serif"],
+        body: ["Inter", "system-ui", "sans-serif"],
       },
       boxShadow: {
-        glow: "0 18px 50px -24px rgba(143, 199, 194, 0.28)",
-        glass: "0 22px 64px -32px rgba(18, 28, 40, 0.44)",
+        glow: "0 20px 48px -26px rgba(79, 70, 229, 0.28)",
+        glass: "0 24px 70px -34px rgba(15, 23, 42, 0.36)",
       },
       backgroundImage: {
-        mesh: "radial-gradient(circle at top right, rgba(143, 199, 194, 0.18), transparent 34%), radial-gradient(circle at top left, rgba(183, 197, 206, 0.12), transparent 28%), radial-gradient(circle at bottom, rgba(122, 137, 168, 0.14), transparent 34%)",
+        mesh: "radial-gradient(circle at top right, rgba(99, 102, 241, 0.18), transparent 34%), radial-gradient(circle at top left, rgba(56, 189, 248, 0.1), transparent 28%), radial-gradient(circle at bottom, rgba(129, 140, 248, 0.14), transparent 34%)",
       },
     },
   },

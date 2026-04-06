@@ -136,7 +136,7 @@ export default function TreeOperationPanel({
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 light:text-slate-600">
           Algorithm notes
         </p>
         <div className="space-y-2">

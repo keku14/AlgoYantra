@@ -35,19 +35,19 @@ export default function ResultExportCard({ assignment, evaluation }) {
       <div ref={exportRef} className="space-y-5 rounded-[2rem] bg-slate-950/25 p-4 light:bg-slate-50">
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-            <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Score</p>
+            <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Score</p>
             <div className="mt-2 font-display text-4xl font-bold text-white light:text-slate-900">
               {evaluation.score}
             </div>
           </div>
           <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-            <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Mistakes</p>
+            <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Mistakes</p>
             <div className="mt-2 text-lg font-semibold text-white light:text-slate-900">
               {evaluation.mistakes.length}
             </div>
           </div>
           <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-            <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Suggestions</p>
+            <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Suggestions</p>
             <div className="mt-2 text-lg font-semibold text-white light:text-slate-900">
               {evaluation.suggestions.length}
             </div>
