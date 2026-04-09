@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+shared/node_modules/
+
+# Build output
+dist/
+build/
+client/dist/
+server/dist/
+shared/dist/
+
+# Env files
+.env
+.env.*
+!.env.example
+server/.env
+client/.env
+shared/.env
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Runtime / cache
+coverage/
+.nyc_output/
+.cache/
+.parcel-cache/
+.turbo/
+.vite/
+client/.vite/
+*.tsbuildinfo
