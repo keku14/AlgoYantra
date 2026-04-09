@@ -9,11 +9,13 @@ import AssignmentEditor from "../components/AssignmentEditor.jsx";
 import SectionCard from "../components/SectionCard.jsx";
 import SkeletonCard from "../components/SkeletonCard.jsx";
 import StatCard from "../components/StatCard.jsx";
+import TeacherTreeStudio from "../components/TeacherTreeStudio.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const tabs = [
   { id: "assignments", label: "Assignments", icon: Brain },
   { id: "analytics", label: "Analytics", icon: Activity },
+  { id: "studio", label: "Teach Trees", icon: FileText },
 ];
 
 export default function TeacherDashboard() {
@@ -278,6 +280,10 @@ export default function TeacherDashboard() {
             </div>
           </SectionCard>
         </div>
+      ) : null}
+
+      {!loading && activeTab === "studio" ? (
+        <TeacherTreeStudio />
       ) : null}
 
       {!loading && activeTab === "analytics" ? (

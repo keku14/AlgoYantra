@@ -126,26 +126,151 @@ export function collectValues(tree) {
 export function traverseTree(tree, order = "inorder") {
   const values = [];
 
-  function visit(node) {
+  function visitPreorder(node) {
     if (!node) {
       return;
     }
 
-    if (order === "preorder" && isFilledNodeValue(node.value)) {
+    if (isFilledNodeValue(node.value)) {
       values.push(Number(node.value));
     }
 
-    visit(node.left);
+    visitPreorder(node.left);
+    visitPreorder(node.right);
+  }
 
-    if (order === "inorder" && isFilledNodeValue(node.value)) {
+  function visitInorder(node) {
+    if (!node) {
+      return;
+    }
+
+    visitInorder(node.left);
+
+    if (isFilledNodeValue(node.value)) {
       values.push(Number(node.value));
     }
 
-    visit(node.right);
+    visitInorder(node.right);
+  }
 
-    if (order === "postorder" && isFilledNodeValue(node.value)) {
+  function visitPostorder(node) {
+    if (!node) {
+      return;
+    }
+
+    visitPostorder(node.left);
+    visitPostorder(node.right);
+
+    if (isFilledNodeValue(node.value)) {
       values.push(Number(node.value));
     }
+  }
+
+  function visitLevelOrder(node) {
+    const queue = [];
+
+    if (node) {
+      queue.push(node);
+    }
+
+    while (queue.length) {
+      const current = queue.shift();
+
+      if (isFilledNodeValue(current?.value)) {
+        values.push(Number(current.value));
+      }
+
+      if (current?.left) {
+        queue.push(current.left);
+      }
+
+      if (current?.right) {
+        queue.push(current.right);
+      }
+    }
+  }
+
+  switch (order) {
+    case "preorder":
+      visitPreorder(tree);
+      break;
+    case "postorder":
+      visitPostorder(tree);
+      break;
+    case "levelorder":
+      visitLevelOrder(tree);
+      break;
+    case "inorder":
+    default:
+      visitInorder(tree);
+      break;
+  }
+
+  return values;
+}
+
+function buildTraversalPlayback(tree, order, options = {}) {
+  const recorder = createRecorder(options.recordSteps);
+  const traversal = [];
+  const visitedPathIds = [];
+
+  function recordVisit(node, phaseLabel, extraMeta = {}) {
+    if (!node || !isFilledNodeValue(node.value)) {
+      return;
+    }
+
+    traversal.push(Number(node.value));
+    visitedPathIds.push(node.id);
+    recorder.record(
+      `${phaseLabel} ${node.value}. Traversal so far: ${traversal.join(" -> ")}.`,
+      tree,
+      {
+        action: "traverse",
+        highlights: [node.id],
+        traversal: [...traversal],
+        meta: {
+          kind: "tree-traverse",
+          order,
+          pathIds: [...visitedPathIds],
+          currentNodeId: node.id,
+          currentValue: node.value,
+          traversal: [...traversal],
+          decision: "visit",
+          phase: phaseLabel.toLowerCase(),
+          ...extraMeta,
+        },
+      },
+    );
+  }
+
+  function visitPreorder(node) {
+    if (!node) {
+      return;
+    }
+
+    recordVisit(node, "Visit", { strategy: "preorder" });
+    visitPreorder(node.left);
+    visitPreorder(node.right);
+  }
+
+  function visitInorder(node) {
+    if (!node) {
+      return;
+    }
+
+    visitInorder(node.left);
+    recordVisit(node, "Visit", { strategy: "inorder" });
+    visitInorder(node.right);
+  }
+
+  function visitPostorder(node) {
+    if (!node) {
+      return;
+    }
+
+    visitPostorder(node.left);
+    visitPostorder(node.right);
+    recordVisit(node, "Visit", { strategy: "postorder" });
   }
 
   if (order === "levelorder") {
@@ -157,24 +282,91 @@ export function traverseTree(tree, order = "inorder") {
 
     while (queue.length) {
       const current = queue.shift();
-      if (isFilledNodeValue(current.value)) {
-        values.push(Number(current.value));
+
+      if (isFilledNodeValue(current?.value)) {
+        traversal.push(Number(current.value));
+        recorder.record(
+          `Visit ${current.value}. Traversal so far: ${traversal.join(" -> ")}.`,
+          tree,
+          {
+            action: "traverse",
+            highlights: [current.id],
+            traversal: [...traversal],
+            meta: {
+              kind: "tree-traverse",
+              order,
+              pathIds: [...visitedPathIds, current.id],
+              currentNodeId: current.id,
+              currentValue: current.value,
+              traversal: [...traversal],
+              decision: "visit",
+              phase: "visit",
+              strategy: "levelorder",
+            },
+          },
+        );
+        visitedPathIds.push(current.id);
       }
 
-      if (current.left) {
+      if (current?.left) {
         queue.push(current.left);
       }
 
-      if (current.right) {
+      if (current?.right) {
         queue.push(current.right);
       }
     }
 
-    return values;
+    if (!traversal.length) {
+      recorder.record("Traversal found an empty tree.", tree, {
+        action: "traverse",
+        traversal: [],
+        meta: {
+          kind: "tree-traverse",
+          order,
+          pathIds: [],
+          traversal: [],
+        },
+      });
+    }
+
+    return {
+      traversal,
+      steps: recorder.steps,
+    };
   }
 
-  visit(tree);
-  return values;
+  switch (order) {
+    case "preorder":
+      visitPreorder(tree);
+      break;
+    case "postorder":
+      visitPostorder(tree);
+      break;
+    case "inorder":
+    default:
+      visitInorder(tree);
+      break;
+  }
+
+  if (!traversal.length) {
+    recorder.record("Traversal found an empty tree.", tree, {
+      action: "traverse",
+      traversal: [],
+      meta: {
+        kind: "tree-traverse",
+        order,
+        pathIds: [],
+        traversal: [],
+        decision: "empty",
+      },
+    });
+  }
+
+  return {
+    traversal,
+    steps: recorder.steps,
+  };
 }
 
 export function findNodeById(tree, nodeId) {
@@ -301,9 +493,222 @@ function createRecorder(enabled) {
         highlights: details.highlights || [],
         traversal: details.traversal || [],
         operation: details.operation || null,
+        meta: details.meta || null,
       });
     },
   };
+}
+
+function findNodeByValue(node, value) {
+  if (!node) {
+    return null;
+  }
+
+  if (node.value === value) {
+    return node;
+  }
+
+  return findNodeByValue(node.left, value) || findNodeByValue(node.right, value);
+}
+
+function findNodeIdsForValues(tree, values = []) {
+  return dedupe(
+    values
+      .map((value) => findNodeByValue(tree, value)?.id || null)
+      .filter(Boolean),
+  );
+}
+
+function buildOrderedSearchPlayback({
+  recorder,
+  tree,
+  targetValue,
+  metaKind,
+  mode,
+}) {
+  const pathIds = [];
+  let current = tree;
+
+  if (!tree) {
+    recorder.record(
+      `${metaKind.includes("delete") ? "Tree is empty." : "Tree is empty. Ready to place the root."}`,
+      null,
+      {
+        action: metaKind.includes("delete") ? "noop" : "compare",
+        meta: {
+          kind: metaKind,
+          targetValue,
+          incomingValue: targetValue,
+          pathIds: [],
+          decision: "empty",
+        },
+      },
+    );
+    return {
+      pathIds,
+      found: false,
+      parent: null,
+    };
+  }
+
+  let parent = null;
+
+  while (current) {
+    parent = current;
+    pathIds.push(current.id);
+    recorder.record(`Compare ${targetValue} with ${current.value}.`, tree, {
+      action: "compare",
+      highlights: [current.id],
+      meta: {
+        kind: metaKind,
+        targetValue,
+        incomingValue: targetValue,
+        pathIds: [...pathIds],
+        currentNodeId: current.id,
+        comparedValue: current.value,
+        decision: "compare",
+      },
+    });
+
+    if (targetValue === current.value) {
+      recorder.record(
+        mode === "delete"
+          ? `Found ${targetValue}. Prepare the ${metaKind.split("-")[0].toUpperCase()} delete step.`
+          : `Value ${targetValue} already exists here.`,
+        tree,
+        {
+          action: mode === "delete" ? "compare" : "noop",
+          highlights: [current.id],
+          meta: {
+            kind: metaKind,
+            targetValue,
+            incomingValue: targetValue,
+            pathIds: [...pathIds],
+            currentNodeId: current.id,
+            comparedValue: current.value,
+            decision: mode === "delete" ? "found" : "duplicate",
+          },
+        },
+      );
+
+      return {
+        pathIds,
+        found: true,
+        parent,
+      };
+    }
+
+    const nextDirection = targetValue < current.value ? "left" : "right";
+    const nextNode = nextDirection === "left" ? current.left : current.right;
+
+    recorder.record(
+      nextNode
+        ? `${targetValue} is ${nextDirection === "left" ? "smaller" : "greater"} than ${current.value}, so move ${nextDirection} to ${nextNode.value}.`
+        : `${targetValue} should continue ${nextDirection} from ${current.value}, and that slot is open.`,
+      tree,
+      {
+        action: "compare",
+        highlights: nextNode ? [current.id, nextNode.id] : [current.id],
+        meta: {
+          kind: metaKind,
+          targetValue,
+          incomingValue: targetValue,
+          pathIds: [...pathIds],
+          currentNodeId: current.id,
+          comparedValue: current.value,
+          decision: nextDirection,
+          nextNodeId: nextNode?.id || null,
+          nextComparedValue: nextNode?.value ?? null,
+        },
+      },
+    );
+
+    current = nextNode;
+  }
+
+  return {
+    pathIds,
+    found: false,
+    parent,
+  };
+}
+
+function parseAVLNotes(notes = []) {
+  return notes.flatMap((note) => {
+    let match = note.match(/^Right rotation at (-?\d+) for LL imbalance\.$/);
+    if (match) {
+      return [{ type: "rotation", rotation: "right", atValue: Number(match[1]), label: "LL rebalance" }];
+    }
+
+    match = note.match(/^Left rotation at (-?\d+), then right rotation at (-?\d+) for LR imbalance\.$/);
+    if (match) {
+      return [
+        { type: "rotation", rotation: "left", atValue: Number(match[1]), label: "LR rebalance" },
+        { type: "rotation", rotation: "right", atValue: Number(match[2]), label: "LR rebalance" },
+      ];
+    }
+
+    match = note.match(/^Left rotation at (-?\d+) for RR imbalance\.$/);
+    if (match) {
+      return [{ type: "rotation", rotation: "left", atValue: Number(match[1]), label: "RR rebalance" }];
+    }
+
+    match = note.match(/^Right rotation at (-?\d+), then left rotation at (-?\d+) for RL imbalance\.$/);
+    if (match) {
+      return [
+        { type: "rotation", rotation: "right", atValue: Number(match[1]), label: "RL rebalance" },
+        { type: "rotation", rotation: "left", atValue: Number(match[2]), label: "RL rebalance" },
+      ];
+    }
+
+    match = note.match(/^Replaced AVL node (-?\d+) with inorder successor (-?\d+)\.$/);
+    if (match) {
+      return [{ type: "successor", fromValue: Number(match[1]), toValue: Number(match[2]) }];
+    }
+
+    return [];
+  });
+}
+
+function parseRBNotes(notes = []) {
+  return notes.flatMap((note) => {
+    let match = note.match(/^Performed left rotation at (-?\d+)\.$/);
+    if (match) {
+      return [{ type: "rotation", rotation: "left", atValue: Number(match[1]) }];
+    }
+
+    match = note.match(/^Performed right rotation at (-?\d+)\.$/);
+    if (match) {
+      return [{ type: "rotation", rotation: "right", atValue: Number(match[1]) }];
+    }
+
+    match = note.match(/^Flipped colors at (-?\d+)\.$/);
+    if (match) {
+      return [{ type: "color-flip", atValue: Number(match[1]) }];
+    }
+
+    match = note.match(/^Moved a red link left from (-?\d+)\.$/);
+    if (match) {
+      return [{ type: "move-red-left", atValue: Number(match[1]) }];
+    }
+
+    match = note.match(/^Moved a red link right from (-?\d+)\.$/);
+    if (match) {
+      return [{ type: "move-red-right", atValue: Number(match[1]) }];
+    }
+
+    match = note.match(/^Rotated right at (-?\d+) to normalize a leaning red link\.$/);
+    if (match) {
+      return [{ type: "rotation", rotation: "right", atValue: Number(match[1]), label: "normalize red link" }];
+    }
+
+    match = note.match(/^Replaced (-?\d+) with inorder successor (-?\d+)\.$/);
+    if (match) {
+      return [{ type: "successor", fromValue: Number(match[1]), toValue: Number(match[2]) }];
+    }
+
+    return [];
+  });
 }
 
 function getHeight(node) {
@@ -612,6 +1017,14 @@ export function binaryInsert(tree, value, options = {}) {
     recorder.record(`Inserted ${node.value} as the root node.`, node, {
       action: "insert",
       highlights: [node.id],
+      meta: {
+        kind: "binary-insert",
+        incomingValue: node.value,
+        currentNodeId: node.id,
+        insertedNodeId: node.id,
+        pathIds: [node.id],
+        decision: "root",
+      },
     });
 
     return {
@@ -622,15 +1035,38 @@ export function binaryInsert(tree, value, options = {}) {
   }
 
   const queue = [workingTree];
+  const pathIds = [];
 
   while (queue.length) {
     const current = queue.shift();
+    pathIds.push(current.id);
+    recorder.record(`Check node ${current.value} for the next open child position.`, workingTree, {
+      action: "compare",
+      highlights: [current.id],
+      meta: {
+        kind: "binary-insert",
+        incomingValue: node.value,
+        pathIds: [...pathIds],
+        currentNodeId: current.id,
+        comparedValue: current.value,
+        decision: "compare",
+      },
+    });
 
     if (!current.left) {
       current.left = node;
       recorder.record(`Inserted ${node.value} as the left child of ${current.value}.`, workingTree, {
         action: "insert",
         highlights: [current.id, node.id],
+        meta: {
+          kind: "binary-insert",
+          incomingValue: node.value,
+          pathIds: [...pathIds, node.id],
+          currentNodeId: node.id,
+          comparedValue: current.value,
+          insertedNodeId: node.id,
+          decision: "placed-left",
+        },
       });
       break;
     }
@@ -643,6 +1079,15 @@ export function binaryInsert(tree, value, options = {}) {
         {
           action: "insert",
           highlights: [current.id, node.id],
+          meta: {
+            kind: "binary-insert",
+            incomingValue: node.value,
+            pathIds: [...pathIds, node.id],
+            currentNodeId: node.id,
+            comparedValue: current.value,
+            insertedNodeId: node.id,
+            decision: "placed-right",
+          },
         },
       );
       break;
@@ -674,14 +1119,40 @@ export function binaryDelete(tree, value, options = {}) {
   let lastNode = null;
   let lastParent = null;
   const queue = [{ node: workingTree, parent: null }];
+  const visitedIds = [];
 
   while (queue.length) {
     const current = queue.shift();
+    visitedIds.push(current.node.id);
+    recorder.record(`Check node ${current.node.value} while searching level-order for ${value}.`, workingTree, {
+      action: "compare",
+      highlights: [current.node.id],
+      meta: {
+        kind: "binary-delete",
+        targetValue: toNumber(value),
+        pathIds: [...visitedIds],
+        currentNodeId: current.node.id,
+        comparedValue: current.node.value,
+        decision: "compare",
+      },
+    });
     lastNode = current.node;
     lastParent = current.parent;
 
     if (current.node.value === toNumber(value)) {
       targetNode = current.node;
+      recorder.record(`Found ${value}. Keep scanning to identify the deepest replacement node.`, workingTree, {
+        action: "compare",
+        highlights: [current.node.id],
+        meta: {
+          kind: "binary-delete",
+          targetValue: toNumber(value),
+          pathIds: [...visitedIds],
+          currentNodeId: current.node.id,
+          comparedValue: current.node.value,
+          decision: "found",
+        },
+      });
     }
 
     if (current.node.left) {
@@ -696,6 +1167,12 @@ export function binaryDelete(tree, value, options = {}) {
   if (!targetNode) {
     recorder.record(`Value ${value} was not found in the binary tree.`, workingTree, {
       action: "noop",
+      meta: {
+        kind: "binary-delete",
+        targetValue: toNumber(value),
+        pathIds: [...visitedIds],
+        decision: "not-found",
+      },
     });
 
     return {
@@ -708,6 +1185,11 @@ export function binaryDelete(tree, value, options = {}) {
   if (targetNode === workingTree && !workingTree.left && !workingTree.right) {
     recorder.record(`Deleted the only node ${value} from the binary tree.`, null, {
       action: "delete",
+      meta: {
+        kind: "binary-delete",
+        targetValue: toNumber(value),
+        decision: "delete-root",
+      },
     });
 
     return {
@@ -732,6 +1214,14 @@ export function binaryDelete(tree, value, options = {}) {
     {
       action: "delete",
       highlights: [targetNode.id],
+      meta: {
+        kind: "binary-delete",
+        targetValue: toNumber(value),
+        pathIds: [...visitedIds],
+        currentNodeId: targetNode.id,
+        comparedValue: lastNode.value,
+        decision: "replaced-with-deepest",
+      },
     },
   );
 
@@ -746,12 +1236,20 @@ export function bstInsert(tree, value, options = {}) {
   const recorder = createRecorder(options.recordSteps);
   const workingTree = cloneTree(tree);
   const numericValue = toNumber(value);
+  const comparedPathIds = [];
 
   if (!workingTree) {
     const root = createNode(numericValue);
     recorder.record(`Inserted ${numericValue} as the BST root.`, root, {
       action: "insert",
       highlights: [root.id],
+      meta: {
+        kind: "bst-insert",
+        incomingValue: numericValue,
+        pathIds: [root.id],
+        currentNodeId: root.id,
+        decision: "root",
+      },
     });
 
     return {
@@ -766,11 +1264,32 @@ export function bstInsert(tree, value, options = {}) {
 
   while (current) {
     parent = current;
+    comparedPathIds.push(current.id);
+    recorder.record(`Compare ${numericValue} with ${current.value}.`, workingTree, {
+      action: "compare",
+      highlights: [current.id],
+      meta: {
+        kind: "bst-insert",
+        incomingValue: numericValue,
+        pathIds: [...comparedPathIds],
+        currentNodeId: current.id,
+        comparedValue: current.value,
+        decision: "compare",
+      },
+    });
 
     if (numericValue === current.value) {
       recorder.record(`Skipped ${numericValue} because BST nodes must remain unique.`, workingTree, {
         action: "noop",
         highlights: [current.id],
+        meta: {
+          kind: "bst-insert",
+          incomingValue: numericValue,
+          pathIds: [...comparedPathIds],
+          currentNodeId: current.id,
+          comparedValue: current.value,
+          decision: "duplicate",
+        },
       });
 
       return {
@@ -780,7 +1299,31 @@ export function bstInsert(tree, value, options = {}) {
       };
     }
 
-    current = numericValue < current.value ? current.left : current.right;
+    const nextDirection = numericValue < current.value ? "left" : "right";
+    const nextNode = nextDirection === "left" ? current.left : current.right;
+
+    recorder.record(
+      nextNode
+        ? `${numericValue} is ${nextDirection === "left" ? "smaller" : "greater"} than ${current.value}, so move ${nextDirection} to ${nextNode.value}.`
+        : `${numericValue} is ${nextDirection === "left" ? "smaller" : "greater"} than ${current.value}, so ${nextDirection} is the correct open position.`,
+      workingTree,
+      {
+        action: "compare",
+        highlights: nextNode ? [current.id, nextNode.id] : [current.id],
+        meta: {
+          kind: "bst-insert",
+          incomingValue: numericValue,
+          pathIds: [...comparedPathIds],
+          currentNodeId: current.id,
+          comparedValue: current.value,
+          decision: nextDirection,
+          nextNodeId: nextNode?.id || null,
+          nextComparedValue: nextNode?.value ?? null,
+        },
+      },
+    );
+
+    current = nextNode;
   }
 
   const node = createNode(numericValue);
@@ -794,6 +1337,16 @@ export function bstInsert(tree, value, options = {}) {
   recorder.record(`Inserted ${numericValue} into its valid BST range.`, workingTree, {
     action: "insert",
     highlights: [parent.id, node.id],
+    meta: {
+      kind: "bst-insert",
+      incomingValue: numericValue,
+      pathIds: [...comparedPathIds, node.id],
+      currentNodeId: node.id,
+      comparedValue: parent.value,
+      decision: numericValue < parent.value ? "placed-left" : "placed-right",
+      parentId: parent.id,
+      insertedNodeId: node.id,
+    },
   });
 
   return {
@@ -833,10 +1386,203 @@ function bstDeleteRecursive(node, value) {
   return node;
 }
 
+function findBSTNode(node, value) {
+  let current = node;
+
+  while (current) {
+    if (value === current.value) {
+      return current;
+    }
+
+    current = value < current.value ? current.left : current.right;
+  }
+
+  return null;
+}
+
 export function bstDelete(tree, value, options = {}) {
   const recorder = createRecorder(options.recordSteps);
   const workingTree = cloneTree(tree);
   const numericValue = toNumber(value);
+  const comparedPathIds = [];
+
+  if (!workingTree) {
+    recorder.record(`BST is empty. Nothing to delete for ${numericValue}.`, null, {
+      action: "noop",
+      meta: {
+        kind: "bst-delete",
+        targetValue: numericValue,
+        pathIds: [],
+        decision: "empty",
+      },
+    });
+
+    return {
+      tree: null,
+      steps: recorder.steps,
+      notes: [`BST is empty. Nothing to delete for ${numericValue}.`],
+    };
+  }
+
+  let current = workingTree;
+
+  while (current) {
+    comparedPathIds.push(current.id);
+    recorder.record(`Compare ${numericValue} with ${current.value}.`, workingTree, {
+      action: "compare",
+      highlights: [current.id],
+      meta: {
+        kind: "bst-delete",
+        targetValue: numericValue,
+        pathIds: [...comparedPathIds],
+        currentNodeId: current.id,
+        comparedValue: current.value,
+        decision: "compare",
+      },
+    });
+
+    if (numericValue === current.value) {
+      recorder.record(`Found ${numericValue}. Prepare to remove this BST node.`, workingTree, {
+        action: "compare",
+        highlights: [current.id],
+        meta: {
+          kind: "bst-delete",
+          targetValue: numericValue,
+          pathIds: [...comparedPathIds],
+          currentNodeId: current.id,
+          comparedValue: current.value,
+          decision: "found",
+        },
+      });
+      break;
+    }
+
+    const nextDirection = numericValue < current.value ? "left" : "right";
+    const nextNode = nextDirection === "left" ? current.left : current.right;
+
+    recorder.record(
+      nextNode
+        ? `${numericValue} is ${nextDirection === "left" ? "smaller" : "greater"} than ${current.value}, so continue ${nextDirection} to ${nextNode.value}.`
+        : `${numericValue} should go ${nextDirection} from ${current.value}, but that branch is empty.`,
+      workingTree,
+      {
+        action: "compare",
+        highlights: nextNode ? [current.id, nextNode.id] : [current.id],
+        meta: {
+          kind: "bst-delete",
+          targetValue: numericValue,
+          pathIds: [...comparedPathIds],
+          currentNodeId: current.id,
+          comparedValue: current.value,
+          decision: nextDirection,
+          nextNodeId: nextNode?.id || null,
+          nextComparedValue: nextNode?.value ?? null,
+        },
+      },
+    );
+
+    current = nextNode;
+  }
+
+  const targetNode = findBSTNode(workingTree, numericValue);
+
+  if (targetNode?.left && targetNode?.right) {
+    recorder.record(
+      `Node ${numericValue} has two children. Find the inorder successor in the right subtree.`,
+      workingTree,
+      {
+        action: "compare",
+        highlights: [targetNode.id, targetNode.right.id],
+        meta: {
+          kind: "bst-delete",
+          targetValue: numericValue,
+          pathIds: [...comparedPathIds, targetNode.right.id],
+          currentNodeId: targetNode.id,
+          comparedValue: targetNode.value,
+          decision: "find-successor",
+          successorNodeId: targetNode.right.id,
+        },
+      },
+    );
+
+    let successorCursor = targetNode.right;
+    const successorPathIds = [...comparedPathIds, successorCursor.id];
+
+    recorder.record(`Start successor search at ${successorCursor.value}.`, workingTree, {
+      action: "compare",
+      highlights: [successorCursor.id],
+      meta: {
+        kind: "bst-delete",
+        targetValue: numericValue,
+        pathIds: [...successorPathIds],
+        currentNodeId: successorCursor.id,
+        comparedValue: successorCursor.value,
+        decision: "successor-start",
+        successorNodeId: successorCursor.id,
+      },
+    });
+
+    while (successorCursor.left) {
+      successorPathIds.push(successorCursor.left.id);
+      recorder.record(
+        `Move left from ${successorCursor.value} to ${successorCursor.left.value} to find the smallest larger value.`,
+        workingTree,
+        {
+          action: "compare",
+          highlights: [successorCursor.id, successorCursor.left.id],
+          meta: {
+            kind: "bst-delete",
+            targetValue: numericValue,
+            pathIds: [...successorPathIds],
+            currentNodeId: successorCursor.left.id,
+            comparedValue: successorCursor.left.value,
+            decision: "successor-left",
+            successorNodeId: successorCursor.left.id,
+          },
+        },
+      );
+      successorCursor = successorCursor.left;
+    }
+
+    recorder.record(
+      `Successor found: ${successorCursor.value}. It will replace ${numericValue}.`,
+      workingTree,
+      {
+        action: "compare",
+        highlights: [targetNode.id, successorCursor.id],
+        meta: {
+          kind: "bst-delete",
+          targetValue: numericValue,
+          pathIds: [...successorPathIds],
+          currentNodeId: successorCursor.id,
+          comparedValue: successorCursor.value,
+          decision: "successor-found",
+          successorNodeId: successorCursor.id,
+          replacedNodeId: targetNode.id,
+        },
+      },
+    );
+  } else if (targetNode) {
+    recorder.record(
+      targetNode.left || targetNode.right
+        ? `Node ${numericValue} has one child, so promote that child after deletion.`
+        : `Node ${numericValue} is a leaf, so it can be removed directly.`,
+      workingTree,
+      {
+        action: "compare",
+        highlights: [targetNode.id],
+        meta: {
+          kind: "bst-delete",
+          targetValue: numericValue,
+          pathIds: [...comparedPathIds],
+          currentNodeId: targetNode.id,
+          comparedValue: targetNode.value,
+          decision: targetNode.left || targetNode.right ? "promote-child" : "delete-leaf",
+        },
+      },
+    );
+  }
+
   const beforeValues = collectValues(workingTree);
   const nextTree = bstDeleteRecursive(workingTree, numericValue);
   const afterValues = collectValues(nextTree);
@@ -844,10 +1590,26 @@ export function bstDelete(tree, value, options = {}) {
   if (beforeValues.length === afterValues.length) {
     recorder.record(`Value ${numericValue} was not found in the BST.`, nextTree, {
       action: "noop",
+      meta: {
+        kind: "bst-delete",
+        targetValue: numericValue,
+        pathIds: [...comparedPathIds],
+        decision: "not-found",
+      },
     });
   } else {
+    const replacementNode = findBSTNode(nextTree, numericValue);
     recorder.record(`Deleted ${numericValue} from the BST using successor replacement when needed.`, nextTree, {
       action: "delete",
+      highlights: replacementNode?.id ? [replacementNode.id] : [],
+      meta: {
+        kind: "bst-delete",
+        targetValue: numericValue,
+        pathIds: [...comparedPathIds],
+        currentNodeId: replacementNode?.id || null,
+        comparedValue: replacementNode?.value ?? null,
+        decision: "deleted",
+      },
     });
   }
 
@@ -907,10 +1669,61 @@ function avlInsertRecursive(node, value, notes) {
 
 export function avlInsert(tree, value, options = {}) {
   const recorder = createRecorder(options.recordSteps);
+  const numericValue = toNumber(value);
+  const workingTree = cloneTree(tree);
+  const searchMeta = buildOrderedSearchPlayback({
+    recorder,
+    tree: workingTree,
+    targetValue: numericValue,
+    metaKind: "avl-insert",
+    mode: "insert",
+  });
   const notes = [];
-  const nextTree = avlInsertRecursive(cloneTree(tree), toNumber(value), notes);
-  recorder.record(notes.join(" "), nextTree, {
+  const nextTree = avlInsertRecursive(cloneTree(tree), numericValue, notes);
+
+  if (searchMeta.found) {
+    return {
+      tree: nextTree,
+      steps: recorder.steps,
+      notes,
+    };
+  }
+
+  const insertedNode = findNodeByValue(nextTree, numericValue);
+  recorder.record(`Inserted ${numericValue} into the AVL search path.`, nextTree, {
     action: "insert",
+    highlights: insertedNode?.id ? [insertedNode.id] : [],
+    meta: {
+      kind: "avl-insert",
+      incomingValue: numericValue,
+      pathIds: insertedNode?.id ? [...searchMeta.pathIds, insertedNode.id] : [...searchMeta.pathIds],
+      currentNodeId: insertedNode?.id || null,
+      insertedNodeId: insertedNode?.id || null,
+      decision: insertedNode ? "placed" : "duplicate",
+    },
+  });
+
+  parseAVLNotes(notes).forEach((event) => {
+    if (event.type === "rotation") {
+      const highlightIds = findNodeIdsForValues(nextTree, [event.atValue]);
+      recorder.record(
+        `${event.label || "AVL rebalance"} triggered a ${event.rotation} rotation at ${event.atValue}.`,
+        nextTree,
+        {
+          action: "compare",
+          highlights: highlightIds,
+          meta: {
+            kind: "avl-insert",
+            incomingValue: numericValue,
+            pathIds: highlightIds,
+            currentNodeId: highlightIds[0] || null,
+            decision: `rotate-${event.rotation}`,
+            rotation: event.rotation,
+            rotationLabel: event.label || "rebalance",
+          },
+        },
+      );
+    }
   });
 
   return {
@@ -945,10 +1758,70 @@ function avlDeleteRecursive(node, value, notes) {
 
 export function avlDelete(tree, value, options = {}) {
   const recorder = createRecorder(options.recordSteps);
+  const numericValue = toNumber(value);
+  const workingTree = cloneTree(tree);
+  buildOrderedSearchPlayback({
+    recorder,
+    tree: workingTree,
+    targetValue: numericValue,
+    metaKind: "avl-delete",
+    mode: "delete",
+  });
   const notes = [];
-  const nextTree = avlDeleteRecursive(cloneTree(tree), toNumber(value), notes);
+  const nextTree = avlDeleteRecursive(cloneTree(tree), numericValue, notes);
+  const parsedEvents = parseAVLNotes(notes);
+  const successorEvent = parsedEvents.find((event) => event.type === "successor");
+
+  if (successorEvent) {
+    const successorIds = findNodeIdsForValues(nextTree, [successorEvent.toValue]);
+    recorder.record(
+      `AVL delete replaced ${successorEvent.fromValue} with successor ${successorEvent.toValue}.`,
+      nextTree,
+      {
+        action: "compare",
+        highlights: successorIds,
+        meta: {
+          kind: "avl-delete",
+          targetValue: numericValue,
+          pathIds: successorIds,
+          currentNodeId: successorIds[0] || null,
+          comparedValue: successorEvent.toValue,
+          decision: "successor-found",
+        },
+      },
+    );
+  }
+
   recorder.record(notes.join(" "), nextTree, {
     action: "delete",
+    meta: {
+      kind: "avl-delete",
+      targetValue: numericValue,
+      decision: "deleted",
+    },
+  });
+
+  parsedEvents.forEach((event) => {
+    if (event.type === "rotation") {
+      const highlightIds = findNodeIdsForValues(nextTree, [event.atValue]);
+      recorder.record(
+        `${event.label || "AVL rebalance"} triggered a ${event.rotation} rotation at ${event.atValue}.`,
+        nextTree,
+        {
+          action: "compare",
+          highlights: highlightIds,
+          meta: {
+            kind: "avl-delete",
+            targetValue: numericValue,
+            pathIds: highlightIds,
+            currentNodeId: highlightIds[0] || null,
+            decision: `rotate-${event.rotation}`,
+            rotation: event.rotation,
+            rotationLabel: event.label || "rebalance",
+          },
+        },
+      );
+    }
   });
 
   return {
@@ -992,15 +1865,79 @@ function rbInsertRecursive(node, value, notes) {
 
 export function rbInsert(tree, value, options = {}) {
   const recorder = createRecorder(options.recordSteps);
+  const numericValue = toNumber(value);
+  const workingTree = cloneTree(tree);
+  const searchMeta = buildOrderedSearchPlayback({
+    recorder,
+    tree: workingTree,
+    targetValue: numericValue,
+    metaKind: "rb-insert",
+    mode: "insert",
+  });
   const notes = [];
-  const nextTree = rbInsertRecursive(cloneTree(tree), toNumber(value), notes);
+  const nextTree = rbInsertRecursive(cloneTree(tree), numericValue, notes);
 
   if (nextTree) {
     nextTree.color = COLORS.BLACK;
   }
 
-  recorder.record(notes.join(" "), nextTree, {
+  if (searchMeta.found) {
+    return {
+      tree: nextTree,
+      steps: recorder.steps,
+      notes,
+    };
+  }
+
+  const insertedNode = findNodeByValue(nextTree, numericValue);
+  recorder.record(`Inserted ${numericValue} and repaired Red-Black properties as needed.`, nextTree, {
     action: "insert",
+    highlights: insertedNode?.id ? [insertedNode.id] : [],
+    meta: {
+      kind: "rb-insert",
+      incomingValue: numericValue,
+      pathIds: insertedNode?.id ? [...searchMeta.pathIds, insertedNode.id] : [...searchMeta.pathIds],
+      currentNodeId: insertedNode?.id || null,
+      insertedNodeId: insertedNode?.id || null,
+      decision: "placed",
+    },
+  });
+
+  parseRBNotes(notes).forEach((event) => {
+    const highlightIds = findNodeIdsForValues(nextTree, [event.atValue]);
+    if (event.type === "rotation") {
+      recorder.record(
+        `Red-Black repair used a ${event.rotation} rotation at ${event.atValue}.`,
+        nextTree,
+        {
+          action: "compare",
+          highlights: highlightIds,
+          meta: {
+            kind: "rb-insert",
+            incomingValue: numericValue,
+            pathIds: highlightIds,
+            currentNodeId: highlightIds[0] || null,
+            decision: `rotate-${event.rotation}`,
+            rotation: event.rotation,
+            rotationLabel: event.label || "repair",
+          },
+        },
+      );
+    }
+
+    if (event.type === "color-flip") {
+      recorder.record(`Red-Black repair flipped colors at ${event.atValue}.`, nextTree, {
+        action: "compare",
+        highlights: highlightIds,
+        meta: {
+          kind: "rb-insert",
+          incomingValue: numericValue,
+          pathIds: highlightIds,
+          currentNodeId: highlightIds[0] || null,
+          decision: "color-flip",
+        },
+      });
+    }
   });
 
   return {
@@ -1055,6 +1992,7 @@ export function rbDelete(tree, value, options = {}) {
   const recorder = createRecorder(options.recordSteps);
   const notes = [];
   const workingTree = cloneTree(tree);
+  const numericValue = toNumber(value);
 
   if (!workingTree) {
     return {
@@ -1064,13 +2002,21 @@ export function rbDelete(tree, value, options = {}) {
     };
   }
 
+  buildOrderedSearchPlayback({
+    recorder,
+    tree: workingTree,
+    targetValue: numericValue,
+    metaKind: "rb-delete",
+    mode: "delete",
+  });
+
   let nextTree = workingTree;
 
   if (!isRed(nextTree.left) && !isRed(nextTree.right)) {
     nextTree.color = COLORS.RED;
   }
 
-  nextTree = rbDeleteRecursive(nextTree, toNumber(value), notes);
+  nextTree = rbDeleteRecursive(nextTree, numericValue, notes);
 
   if (nextTree) {
     nextTree.color = COLORS.BLACK;
@@ -1078,6 +2024,85 @@ export function rbDelete(tree, value, options = {}) {
 
   recorder.record(notes.join(" "), nextTree, {
     action: "delete",
+    meta: {
+      kind: "rb-delete",
+      targetValue: numericValue,
+      decision: "deleted",
+    },
+  });
+
+  parseRBNotes(notes).forEach((event) => {
+    const highlightIds = findNodeIdsForValues(nextTree, [event.atValue, event.toValue].filter((entry) => entry != null));
+    if (event.type === "rotation") {
+      recorder.record(
+        `Red-Black delete used a ${event.rotation} rotation at ${event.atValue}.`,
+        nextTree,
+        {
+          action: "compare",
+          highlights: highlightIds,
+          meta: {
+            kind: "rb-delete",
+            targetValue: numericValue,
+            pathIds: highlightIds,
+            currentNodeId: highlightIds[0] || null,
+            decision: `rotate-${event.rotation}`,
+            rotation: event.rotation,
+            rotationLabel: event.label || "repair",
+          },
+        },
+      );
+    }
+
+    if (event.type === "color-flip") {
+      recorder.record(`Red-Black delete flipped colors at ${event.atValue}.`, nextTree, {
+        action: "compare",
+        highlights: highlightIds,
+        meta: {
+          kind: "rb-delete",
+          targetValue: numericValue,
+          pathIds: highlightIds,
+          currentNodeId: highlightIds[0] || null,
+          decision: "color-flip",
+        },
+      });
+    }
+
+    if (event.type === "move-red-left" || event.type === "move-red-right") {
+      recorder.record(
+        `Red-Black delete ${event.type === "move-red-left" ? "moved a red link left" : "moved a red link right"} from ${event.atValue}.`,
+        nextTree,
+        {
+          action: "compare",
+          highlights: highlightIds,
+          meta: {
+            kind: "rb-delete",
+            targetValue: numericValue,
+            pathIds: highlightIds,
+            currentNodeId: highlightIds[0] || null,
+            decision: event.type,
+          },
+        },
+      );
+    }
+
+    if (event.type === "successor") {
+      recorder.record(
+        `Red-Black delete replaced ${event.fromValue} with successor ${event.toValue}.`,
+        nextTree,
+        {
+          action: "compare",
+          highlights: highlightIds,
+          meta: {
+            kind: "rb-delete",
+            targetValue: numericValue,
+            pathIds: highlightIds,
+            currentNodeId: highlightIds[0] || null,
+            comparedValue: event.toValue,
+            decision: "successor-found",
+          },
+        },
+      );
+    }
   });
 
   return {
@@ -1149,17 +2174,12 @@ export function applyTreeOperation(treeType, tree, operation, options = {}) {
 
   if (action === "traverse") {
     const order = operation.order || "inorder";
-    const traversal = traverseTree(tree, order);
-    const recorder = createRecorder(options.recordSteps);
-    recorder.record(`Traversed the tree in ${order} order.`, tree, {
-      action: "traverse",
-      traversal,
-      operation,
-    });
+    const playback = buildTraversalPlayback(tree, order, options);
+    const traversal = playback.traversal;
 
     return {
       tree: cloneTree(tree),
-      steps: recorder.steps,
+      steps: playback.steps,
       traversal,
       notes: [`${order} traversal: ${traversal.join(" -> ") || "empty tree"}.`],
     };

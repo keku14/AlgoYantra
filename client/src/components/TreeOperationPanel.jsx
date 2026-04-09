@@ -16,6 +16,7 @@ export default function TreeOperationPanel({
   canUndo,
   canRedo,
   title = "Operations",
+  compact = false,
 }) {
   const [value, setValue] = useState("");
   const [order, setOrder] = useState("inorder");
@@ -23,7 +24,26 @@ export default function TreeOperationPanel({
   function handleOperation(action) {
     if (action === "clear") {
       onTreeChange(null);
-      onResetNotes?.(["Workspace cleared."]);
+      const result = {
+        tree: null,
+        steps: [
+          {
+            id: "workspace-cleared",
+            description: "Workspace cleared. Start building the tree again from an empty root.",
+            tree: null,
+            action: "clear",
+            highlights: [],
+            traversal: [],
+            operation: { action: "clear" },
+            meta: {
+              kind: "workspace-clear",
+            },
+          },
+        ],
+        notes: ["Workspace cleared."],
+      };
+      onResetNotes?.(result.notes);
+      onOperation?.({ action: "clear" }, result);
       return;
     }
 
@@ -59,12 +79,52 @@ export default function TreeOperationPanel({
   }
 
   return (
-    <div className="space-y-4 rounded-[2rem] border border-white/10 bg-slate-950/35 p-5 light:border-slate-200 light:bg-slate-50">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="font-display text-lg font-semibold text-white light:text-slate-900">
-          {title}
-        </h3>
-        <div className="flex items-center gap-2">
+    <div className={`rounded-[2rem] border border-white/10 bg-slate-950/35 p-4 light:border-slate-200 light:bg-slate-50 ${compact ? "space-y-3" : "space-y-4"}`}>
+      <div className={`flex ${compact ? "flex-wrap items-center" : "items-center justify-between"} gap-3`}>
+        {!compact ? (
+          <h3 className="font-display text-lg font-semibold text-white light:text-slate-900">
+            {title}
+          </h3>
+        ) : null}
+        <div className="flex flex-1 flex-wrap items-center gap-3">
+          <input
+            type="number"
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            placeholder="Node value"
+            className="min-w-[140px] flex-1 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none transition focus:border-cyan-300/50 light:border-slate-200 light:bg-white light:text-slate-900"
+          />
+          <select
+            value={order}
+            onChange={(event) => setOrder(event.target.value)}
+            className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none transition focus:border-cyan-300/50 light:border-slate-200 light:bg-white light:text-slate-900"
+          >
+            <option value="inorder">Inorder</option>
+            <option value="preorder">Preorder</option>
+            <option value="postorder">Postorder</option>
+            <option value="levelorder">Level order</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => handleOperation("insert")}
+            className="rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 px-4 py-3 font-semibold text-slate-950"
+          >
+            Insert
+          </button>
+          <button
+            type="button"
+            onClick={() => handleOperation("delete")}
+            className="rounded-2xl border border-rose-300/20 bg-rose-500/10 px-4 py-3 font-semibold text-rose-100 light:text-rose-700"
+          >
+            Delete
+          </button>
+          <button
+            type="button"
+            onClick={() => handleOperation("traverse")}
+            className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 font-semibold text-emerald-100 light:text-emerald-700"
+          >
+            Traverse
+          </button>
           <button
             type="button"
             onClick={onUndo}
@@ -91,65 +151,23 @@ export default function TreeOperationPanel({
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-[1fr,180px]">
-        <input
-          type="number"
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          placeholder="Node value"
-          className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none transition focus:border-cyan-300/50 light:border-slate-200 light:bg-white light:text-slate-900"
-        />
-        <select
-          value={order}
-          onChange={(event) => setOrder(event.target.value)}
-          className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none transition focus:border-cyan-300/50 light:border-slate-200 light:bg-white light:text-slate-900"
-        >
-          <option value="inorder">Inorder</option>
-          <option value="preorder">Preorder</option>
-          <option value="postorder">Postorder</option>
-          <option value="levelorder">Level order</option>
-        </select>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        <button
-          type="button"
-          onClick={() => handleOperation("insert")}
-          className="rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 px-4 py-3 font-semibold text-slate-950"
-        >
-          Insert
-        </button>
-        <button
-          type="button"
-          onClick={() => handleOperation("delete")}
-          className="rounded-2xl border border-rose-300/20 bg-rose-500/10 px-4 py-3 font-semibold text-rose-100 light:text-rose-700"
-        >
-          Delete
-        </button>
-        <button
-          type="button"
-          onClick={() => handleOperation("traverse")}
-          className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 font-semibold text-emerald-100 light:text-emerald-700"
-        >
-          Traverse
-        </button>
-      </div>
-
-      <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 light:text-slate-600">
-          Algorithm notes
-        </p>
+      {!compact ? (
         <div className="space-y-2">
-          {(notes.length ? notes : ["Apply an operation to see step-by-step feedback."]).map((note) => (
-            <div
-              key={note}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 light:border-slate-200 light:bg-white light:text-slate-700"
-            >
-              {note}
-            </div>
-          ))}
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 light:text-slate-600">
+            Algorithm notes
+          </p>
+          <div className="space-y-2">
+            {(notes.length ? notes : ["Apply an operation to see step-by-step feedback."]).map((note) => (
+              <div
+                key={note}
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 light:border-slate-200 light:bg-white light:text-slate-700"
+              >
+                {note}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

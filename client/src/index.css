@@ -215,6 +215,62 @@
     box-shadow: var(--shadow-soft);
     @apply rounded-[1.25rem];
   }
+
+  .tree-compare-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 1rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(34, 211, 238, 0.24);
+    background: rgba(8, 47, 73, 0.94);
+    box-shadow: 0 16px 34px -22px rgba(34, 211, 238, 0.8);
+    backdrop-filter: blur(10px);
+    animation: treeCompareFloat 900ms ease-in-out infinite alternate;
+  }
+
+  .tree-compare-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(207, 250, 254, 0.98);
+  }
+
+  .tree-compare-value {
+    min-width: 2.3rem;
+    height: 2.3rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #22d3ee, #38bdf8);
+    color: #082f49;
+    font-weight: 800;
+  }
+
+  .tree-compare-status {
+    padding: 0.7rem 1rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(245, 158, 11, 0.18);
+    background: rgba(15, 23, 42, 0.94);
+    color: #ffffff;
+    font-size: 0.85rem;
+    font-weight: 700;
+    backdrop-filter: blur(8px);
+  }
+
+  .tree-delete-badge {
+    border-color: rgba(251, 113, 133, 0.24);
+    background: rgba(76, 5, 25, 0.84);
+    box-shadow: 0 16px 34px -22px rgba(244, 63, 94, 0.58);
+  }
+
+  .tree-traverse-badge {
+    border-color: rgba(167, 139, 250, 0.24);
+    background: rgba(46, 16, 101, 0.84);
+    box-shadow: 0 16px 34px -22px rgba(139, 92, 246, 0.54);
+  }
 }
 
 @layer utilities {
@@ -325,4 +381,86 @@
 
 ::-webkit-scrollbar-track {
   @apply bg-transparent;
+}
+
+.tree-link-default {
+  stroke: #64748b;
+  stroke-width: 2;
+}
+
+.tree-link-compared {
+  stroke: #f59e0b;
+  stroke-width: 4;
+  stroke-linecap: round;
+  animation: treeLinkPulse 850ms ease-in-out infinite alternate;
+}
+
+.tree-link-delete {
+  stroke: #fb7185;
+  stroke-width: 4;
+  stroke-linecap: round;
+  animation: treeLinkPulse 850ms ease-in-out infinite alternate;
+}
+
+.tree-link-traverse {
+  stroke: #8b5cf6;
+  stroke-width: 4;
+  stroke-linecap: round;
+  animation: treeLinkPulse 850ms ease-in-out infinite alternate;
+}
+
+.tree-node-pulse {
+  animation: treeNodePulse 850ms ease-in-out infinite alternate;
+}
+
+.light .tree-compare-badge {
+  background: rgba(236, 254, 255, 0.96);
+  border-color: rgba(14, 165, 233, 0.24);
+}
+
+.light .tree-delete-badge {
+  background: rgba(255, 241, 242, 0.96);
+  border-color: rgba(244, 63, 94, 0.18);
+}
+
+.light .tree-traverse-badge {
+  background: rgba(245, 243, 255, 0.96);
+  border-color: rgba(139, 92, 246, 0.18);
+}
+
+.light .tree-compare-status {
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+}
+
+@keyframes treeNodePulse {
+  from {
+    opacity: 0.42;
+    transform: scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes treeLinkPulse {
+  from {
+    opacity: 0.45;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes treeCompareFloat {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(4px);
+  }
 }
