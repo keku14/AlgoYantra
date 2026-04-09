@@ -71,18 +71,6 @@ AUTO_SEED=true
 VITE_API_URL=http://localhost:5001/api
 VITE_SOCKET_URL=http://localhost:5001
 ```
-
-## Demo Accounts
-
-If `AUTO_SEED=true`, the backend creates demo data on first startup.
-
-- Teacher
-  - Email: `teacher@algoyantra.dev`
-  - Password: `Teach123!`
-- Student
-  - Email: `student@algoyantra.dev`
-  - Password: `Learn123!`
-
 ## Scripts
 
 ### Root
