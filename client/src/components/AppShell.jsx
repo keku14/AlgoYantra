@@ -54,67 +54,70 @@ export default function AppShell({
             <div />
           )}
 
-          <div ref={menuRef} className="relative">
-            <button
-              type="button"
-              onClick={() => setIsProfileMenuOpen((current) => !current)}
-              className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-slate-100 shadow-sm transition hover:border-indigo-300/30 hover:bg-white/10 hover:shadow-glow light:border-slate-200 light:bg-white/90 light:text-slate-800"
-              aria-label="Open profile menu"
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-400 font-display text-sm font-bold text-slate-950">
-                {userInitial}
-              </span>
-              <span className="hidden text-left sm:block">
-                <span className="block text-sm font-semibold">{user?.name}</span>
-                <span className="block text-xs text-slate-400 light:text-slate-500">{user?.role}</span>
-              </span>
-              <ChevronDown size={18} />
-            </button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
 
-            {isProfileMenuOpen ? (
-              <div className="glass-panel section-gradient absolute right-0 top-[calc(100%+0.75rem)] z-20 w-[320px] p-5 shadow-2xl">
-                <div className="rounded-[1.25rem] border border-white/10 bg-white/8 p-4 light:border-slate-200 light:bg-white/80">
-                  <p className="text-sm text-slate-300 light:text-slate-600">{user?.role}</p>
-                  <h2 className="mt-1 font-display text-lg font-semibold text-white light:text-slate-900">
-                    {user?.name}
-                  </h2>
-                  <p className="mt-2 text-sm text-slate-300 light:text-slate-600">{user?.email}</p>
-                </div>
+            <div ref={menuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setIsProfileMenuOpen((current) => !current)}
+                className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-slate-100 shadow-sm transition hover:border-indigo-300/30 hover:bg-white/10 hover:shadow-glow light:border-slate-200 light:bg-white/90 light:text-slate-800"
+                aria-label="Open profile menu"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-400 font-display text-sm font-bold text-slate-950">
+                  {userInitial}
+                </span>
+                <span className="hidden text-left sm:block">
+                  <span className="block text-sm font-semibold">{user?.name}</span>
+                  <span className="block text-xs text-slate-400 light:text-slate-500">{user?.role}</span>
+                </span>
+                <ChevronDown size={18} />
+              </button>
 
-                <nav className="mt-4 space-y-2">
-                  {tabs.map((tab) => (
+              {isProfileMenuOpen ? (
+                <div className="glass-panel section-gradient absolute right-0 top-[calc(100%+0.75rem)] z-20 w-[320px] p-5 shadow-2xl">
+                  <div className="rounded-[1.25rem] border border-white/10 bg-white/8 p-4 light:border-slate-200 light:bg-white/80">
+                    <p className="text-sm text-slate-300 light:text-slate-600">{user?.role}</p>
+                    <h2 className="mt-1 font-display text-lg font-semibold text-white light:text-slate-900">
+                      {user?.name}
+                    </h2>
+                    <p className="mt-2 text-sm text-slate-300 light:text-slate-600">{user?.email}</p>
+                  </div>
+
+                  <nav className="mt-4 space-y-2">
+                    {tabs.map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => {
+                          onTabChange(tab.id);
+                          setIsProfileMenuOpen(false);
+                        }}
+                        className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${
+                          activeTab === tab.id
+                            ? "bg-white text-slate-950 shadow-lg shadow-indigo-500/10"
+                            : "text-slate-200 hover:bg-white/10 light:text-slate-700 light:hover:bg-slate-100"
+                        }`}
+                      >
+                        <tab.icon size={18} />
+                        {tab.label}
+                      </button>
+                    ))}
+                  </nav>
+
+                  <div className="mt-4 space-y-3">
                     <button
-                      key={tab.id}
                       type="button"
-                      onClick={() => {
-                        onTabChange(tab.id);
-                        setIsProfileMenuOpen(false);
-                      }}
-                      className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${
-                        activeTab === tab.id
-                          ? "bg-white text-slate-950 shadow-lg shadow-indigo-500/10"
-                          : "text-slate-200 hover:bg-white/10 light:text-slate-700 light:hover:bg-slate-100"
-                      }`}
+                      onClick={logout}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-rose-300/30 hover:bg-white/15 light:border-slate-200 light:bg-white light:text-slate-900"
                     >
-                      <tab.icon size={18} />
-                      {tab.label}
+                      <LogOut size={16} />
+                      Sign out
                     </button>
-                  ))}
-                </nav>
-
-                <div className="mt-4 space-y-3">
-                  <ThemeToggle />
-                  <button
-                    type="button"
-                    onClick={logout}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-rose-300/30 hover:bg-white/15 light:border-slate-200 light:bg-white light:text-slate-900"
-                  >
-                    <LogOut size={16} />
-                    Sign out
-                  </button>
+                  </div>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </div>
         </div>
 
