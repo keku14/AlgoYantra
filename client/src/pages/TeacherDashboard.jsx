@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { Activity, BarChart3, Brain, FilePenLine, FilePlus2, FileText, Target, Trash2, Trophy, Users, X } from "lucide-react";
+import { Activity, BarChart3, Brain, FilePenLine, FilePlus2, FileText, GitBranch, Target, Trash2, Trophy, Users, X } from "lucide-react";
 
 import api from "../api/client.js";
 import AnalyticsCharts from "../components/AnalyticsCharts.jsx";
@@ -13,14 +13,15 @@ import TeacherTreeStudio from "../components/TeacherTreeStudio.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const tabs = [
+  { id: "studio", label: "Teach Trees", icon: GitBranch },
   { id: "assignments", label: "Assignments", icon: Brain },
   { id: "analytics", label: "Analytics", icon: Activity },
-  { id: "studio", label: "Teach Trees", icon: FileText },
+  { id: "student-report", label: "Student Report", icon: FileText },
 ];
 
 export default function TeacherDashboard() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("assignments");
+  const [activeTab, setActiveTab] = useState("studio");
   const [loading, setLoading] = useState(true);
   const [assignments, setAssignments] = useState([]);
   const [analytics, setAnalytics] = useState(null);
@@ -180,6 +181,183 @@ export default function TeacherDashboard() {
       setDeletingAssignmentId(null);
     }
   }
+
+  const studentReportCardSection = (
+    <SectionCard
+      title="Student performance"
+      eyebrow="Class overview"
+      actions={selectedStudentReport ? (
+        <button
+          type="button"
+          onClick={() => setSelectedStudentId(null)}
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10 light:border-slate-200 light:bg-white light:text-slate-700"
+          aria-label="Clear student selection"
+        >
+          <X size={18} />
+        </button>
+      ) : null}
+    >
+      {studentReports.length ? (
+        <div className="grid gap-6 xl:grid-cols-[320px,minmax(0,1fr)]">
+          <div className="space-y-4">
+            <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
+                Search students
+              </p>
+              <input
+                type="text"
+                value={studentSearch}
+                onChange={(event) => setStudentSearch(event.target.value)}
+                placeholder="Search by student name"
+                className="mt-3 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white light:border-slate-200 light:bg-white light:text-slate-900"
+              />
+            </div>
+
+            <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-3 light:border-slate-200 light:bg-white">
+              <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                {visibleStudentReports.length ? visibleStudentReports.map((student) => (
+                  <button
+                    key={student.studentId}
+                    type="button"
+                    onClick={() => setSelectedStudentId(String(student.studentId))}
+                    className={`w-full rounded-[1.5rem] border px-4 py-4 text-left transition ${
+                      String(selectedStudentId) === String(student.studentId)
+                        ? "border-cyan-300/60 bg-cyan-400/10 text-cyan-50"
+                        : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 light:border-slate-200 light:bg-slate-50 light:text-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-white light:text-slate-900">{student.name}</p>
+                        <p className="mt-1 text-sm text-slate-400 light:text-slate-600">
+                          {student.email}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-display text-xl font-bold text-cyan-200 light:text-cyan-700">
+                          {student.averageScore}%
+                        </div>
+                        <p className="text-sm text-slate-400 light:text-slate-600">
+                          {student.marksEarned}/{student.marksPossible} Marks
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                )) : (
+                  <div className="rounded-[1.5rem] border border-dashed border-white/15 p-5 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
+                    No students matched your search.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {selectedStudentReport ? (
+            <div className="space-y-6">
+              <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-5 light:border-slate-200 light:bg-white">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
+                      Student report card
+                    </p>
+                    <h3 className="mt-2 font-display text-2xl font-semibold text-white light:text-slate-900">
+                      {selectedStudentReport.name}
+                    </h3>
+                    <p className="mt-2 text-sm text-slate-300 light:text-slate-600">
+                      {selectedStudentReport.email}
+                    </p>
+                  </div>
+                  <div className="rounded-[1.25rem] border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-right text-cyan-50 light:text-cyan-700">
+                    <div className="font-display text-3xl font-bold">
+                      {selectedStudentReport.averageScore}%
+                    </div>
+                    <p className="text-sm">
+                      {selectedStudentReport.marksEarned}/{selectedStudentReport.marksPossible} Marks
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-4">
+                <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Assignments attempted</p>
+                  <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
+                    {selectedStudentReport.attempts}
+                  </div>
+                </div>
+                <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Overall score</p>
+                  <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
+                    {selectedStudentReport.averageScore}%
+                  </div>
+                </div>
+                <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
+                  <div className="flex items-center gap-2 text-slate-400 light:text-slate-600">
+                    <BarChart3 size={16} />
+                    <p className="text-xs uppercase tracking-[0.24em]">Tree-wise progress</p>
+                  </div>
+                  <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
+                    {selectedStudentReport.treeTypeBreakdown.length}
+                  </div>
+                </div>
+                <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Overall marks</p>
+                  <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
+                    {selectedStudentReport.marksEarned}/{selectedStudentReport.marksPossible}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-5 light:border-slate-200 light:bg-white">
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
+                  Tree-wise progress
+                </p>
+                <div className="mt-4 space-y-3">
+                  {selectedStudentReport.treeTypeBreakdown.length ? selectedStudentReport.treeTypeBreakdown.map((treeEntry) => (
+                    <div
+                      key={treeEntry.treeType}
+                      className="rounded-[1.25rem] border border-white/10 bg-slate-950/25 p-4 light:border-slate-200 light:bg-slate-50"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-white light:text-slate-900">
+                            {formatTreeTypeLabel(treeEntry.treeType)}
+                          </p>
+                          <p className="mt-1 text-sm text-slate-400 light:text-slate-600">
+                            {treeEntry.attempts} assignment{treeEntry.attempts === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-display text-xl font-bold text-cyan-200 light:text-cyan-700">
+                            {treeEntry.averageScore}%
+                          </p>
+                          <p className="text-sm text-slate-400 light:text-slate-600">
+                            {treeEntry.marksEarned}/{treeEntry.marksPossible} Marks
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="rounded-[1.25rem] border border-dashed border-white/15 p-4 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
+                      No tree progress yet.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-[1.75rem] border border-dashed border-white/15 p-6 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
+              Select a student to view the report card.
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-[1.5rem] border border-dashed border-white/15 p-6 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
+          Student analytics will appear after submissions come in.
+        </div>
+      )}
+    </SectionCard>
+  );
 
   return (
     <AppShell
@@ -437,181 +615,12 @@ export default function TeacherDashboard() {
             mistakeHeatmap={analytics?.mistakeHeatmap || []}
             treeTypePerformance={analytics?.treeTypePerformance || []}
           />
+        </div>
+      ) : null}
 
-          <SectionCard
-            title="Student performance"
-            eyebrow="Class overview"
-            actions={selectedStudentReport ? (
-              <button
-                type="button"
-                onClick={() => setSelectedStudentId(null)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10 light:border-slate-200 light:bg-white light:text-slate-700"
-                aria-label="Clear student selection"
-              >
-                <X size={18} />
-              </button>
-            ) : null}
-          >
-            {studentReports.length ? (
-              <div className="grid gap-6 xl:grid-cols-[320px,minmax(0,1fr)]">
-                <div className="space-y-4">
-                  <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
-                      Search students
-                    </p>
-                    <input
-                      type="text"
-                      value={studentSearch}
-                      onChange={(event) => setStudentSearch(event.target.value)}
-                      placeholder="Search by student name"
-                      className="mt-3 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white light:border-slate-200 light:bg-white light:text-slate-900"
-                    />
-                  </div>
-
-                  <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-3 light:border-slate-200 light:bg-white">
-                    <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
-                      {visibleStudentReports.length ? visibleStudentReports.map((student) => (
-                        <button
-                          key={student.studentId}
-                          type="button"
-                          onClick={() => setSelectedStudentId(String(student.studentId))}
-                          className={`w-full rounded-[1.5rem] border px-4 py-4 text-left transition ${
-                            String(selectedStudentId) === String(student.studentId)
-                              ? "border-cyan-300/60 bg-cyan-400/10 text-cyan-50"
-                              : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 light:border-slate-200 light:bg-slate-50 light:text-slate-700"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <p className="font-medium text-white light:text-slate-900">{student.name}</p>
-                              <p className="mt-1 text-sm text-slate-400 light:text-slate-600">
-                                {student.email}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <div className="font-display text-xl font-bold text-cyan-200 light:text-cyan-700">
-                                {student.averageScore}%
-                              </div>
-                              <p className="text-sm text-slate-400 light:text-slate-600">
-                                {student.marksEarned}/{student.marksPossible} Marks
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-                      )) : (
-                        <div className="rounded-[1.5rem] border border-dashed border-white/15 p-5 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
-                          No students matched your search.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {selectedStudentReport ? (
-                  <div className="space-y-6">
-                    <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-5 light:border-slate-200 light:bg-white">
-                      <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
-                            Student report card
-                          </p>
-                          <h3 className="mt-2 font-display text-2xl font-semibold text-white light:text-slate-900">
-                            {selectedStudentReport.name}
-                          </h3>
-                          <p className="mt-2 text-sm text-slate-300 light:text-slate-600">
-                            {selectedStudentReport.email}
-                          </p>
-                        </div>
-                        <div className="rounded-[1.25rem] border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-right text-cyan-50 light:text-cyan-700">
-                          <div className="font-display text-3xl font-bold">
-                            {selectedStudentReport.averageScore}%
-                          </div>
-                          <p className="text-sm">
-                            {selectedStudentReport.marksEarned}/{selectedStudentReport.marksPossible} Marks
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-4">
-                      <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                        <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Assignments attempted</p>
-                        <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
-                          {selectedStudentReport.attempts}
-                        </div>
-                      </div>
-                      <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                        <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Overall score</p>
-                        <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
-                          {selectedStudentReport.averageScore}%
-                        </div>
-                      </div>
-                      <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                        <div className="flex items-center gap-2 text-slate-400 light:text-slate-600">
-                          <BarChart3 size={16} />
-                          <p className="text-xs uppercase tracking-[0.24em]">Tree-wise progress</p>
-                        </div>
-                        <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
-                          {selectedStudentReport.treeTypeBreakdown.length}
-                        </div>
-                      </div>
-                      <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                        <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Overall marks</p>
-                        <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
-                          {selectedStudentReport.marksEarned}/{selectedStudentReport.marksPossible}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-5 light:border-slate-200 light:bg-white">
-                      <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
-                        Tree-wise progress
-                      </p>
-                      <div className="mt-4 space-y-3">
-                        {selectedStudentReport.treeTypeBreakdown.length ? selectedStudentReport.treeTypeBreakdown.map((treeEntry) => (
-                          <div
-                            key={treeEntry.treeType}
-                            className="rounded-[1.25rem] border border-white/10 bg-slate-950/25 p-4 light:border-slate-200 light:bg-slate-50"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <p className="font-medium text-white light:text-slate-900">
-                                  {formatTreeTypeLabel(treeEntry.treeType)}
-                                </p>
-                                <p className="mt-1 text-sm text-slate-400 light:text-slate-600">
-                                  {treeEntry.attempts} assignment{treeEntry.attempts === 1 ? "" : "s"}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-display text-xl font-bold text-cyan-200 light:text-cyan-700">
-                                  {treeEntry.averageScore}%
-                                </p>
-                                <p className="text-sm text-slate-400 light:text-slate-600">
-                                  {treeEntry.marksEarned}/{treeEntry.marksPossible} Marks
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        )) : (
-                          <div className="rounded-[1.25rem] border border-dashed border-white/15 p-4 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
-                            No tree progress yet.
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-[1.75rem] border border-dashed border-white/15 p-6 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
-                    Select a student to view the report card.
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="rounded-[1.5rem] border border-dashed border-white/15 p-6 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
-                Student analytics will appear after submissions come in.
-              </div>
-            )}
-          </SectionCard>
+      {!loading && activeTab === "student-report" ? (
+        <div className="space-y-6">
+          {studentReportCardSection}
         </div>
       ) : null}
     </AppShell>

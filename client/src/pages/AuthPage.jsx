@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import AuthForm from "../components/AuthForm.jsx";
+import ThemeToggle from "../components/ThemeToggle.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
 export default function AuthPage() {
@@ -45,7 +46,12 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-6xl gap-6 xl:grid-cols-[1.05fr,0.95fr]">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-6 flex justify-end">
+          <ThemeToggle />
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
         <section className="glass-panel section-gradient flex flex-col justify-between p-8 sm:p-10">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-indigo-300/80 light:text-indigo-600">
@@ -107,6 +113,7 @@ export default function AuthPage() {
             <AuthForm key={mode} mode={mode} loading={loading} onSubmit={handleSubmit} />
           </div>
         </section>
+        </div>
       </div>
     </div>
   );
