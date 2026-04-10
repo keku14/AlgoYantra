@@ -6,6 +6,7 @@ import {
   addRootNode,
   findNodeById,
   removeNodeById,
+  setNodeColor,
   setNodeValue,
 } from "@algoyantra/shared";
 
@@ -31,6 +32,7 @@ export default function StudentAssignmentWorkspace({
   }, [assignment?._id]);
 
   const promptValues = assignment?.promptValues || [];
+  const isRedBlackAssignment = assignment?.treeType === "red-black";
 
   function handleNodeClick(nodeId, nodeDatum) {
     setSelectedNodeId(nodeId);
@@ -69,6 +71,15 @@ export default function StudentAssignmentWorkspace({
 
     onTreeChange(removeNodeById(tree, nodeId));
     setSelectedNodeId(null);
+  }
+
+  function handleNodeColorChange(nodeId, nextColor) {
+    if (!nodeId) {
+      return;
+    }
+
+    onTreeChange(setNodeColor(tree, nodeId, nextColor));
+    setSelectedNodeId(nodeId);
   }
 
   if (!assignment) {
@@ -126,6 +137,7 @@ export default function StudentAssignmentWorkspace({
             onAddChild={handleAddChild}
             onDeleteNode={handleRemoveNode}
             onNodeValueChange={handleNodeValueChange}
+            onNodeColorChange={isRedBlackAssignment ? handleNodeColorChange : undefined}
             editableNodeId={selectedNodeId}
             height={520}
           />
@@ -145,8 +157,12 @@ export default function StudentAssignmentWorkspace({
           <div className="flex flex-wrap items-center justify-between gap-4">
             <p className="text-sm text-slate-300 light:text-slate-700">
               {selectedNodeId
-                ? "Edit directly inside the selected node. Use the workspace controls around it to grow or remove the tree."
-                : "Create the root inside the blank workspace, then click any node to type inside it."}
+                ? isRedBlackAssignment
+                  ? "Edit the selected node, then use the color toggle on each node to choose red or black."
+                  : "Edit directly inside the selected node. Use the workspace controls around it to grow or remove the tree."
+                : isRedBlackAssignment
+                  ? "Create the root, click any node to type inside it, and use the node color toggle for Red-Black rules."
+                  : "Create the root inside the blank workspace, then click any node to type inside it."}
             </p>
             <button
               type="button"

@@ -60,7 +60,7 @@ const assignmentSchema = new mongoose.Schema(
     },
     xpReward: {
       type: Number,
-      default: 120,
+      default: 100,
     },
     dueDate: Date,
     liveSessionEnabled: {

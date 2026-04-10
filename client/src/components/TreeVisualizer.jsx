@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Tree from "react-d3-tree";
 
 import { countNodes, treeHeight, treeToD3Data } from "@algoyantra/shared";
@@ -37,6 +37,10 @@ function getComparisonStatus(comparisonState) {
   }
 
   if (comparisonState.kind === "tree-traverse") {
+    if (comparisonState.decision === "complete") {
+      return `${comparisonState.order} traversal complete`;
+    }
+
     return comparisonState.currentValue != null
       ? `Visiting ${comparisonState.currentValue} in ${comparisonState.order} order`
       : `Preparing ${comparisonState.order} traversal`;
@@ -95,6 +99,10 @@ function getComparisonStatus(comparisonState) {
       return `${treeLabel} ${comparisonState.rotationLabel || "rebalance"}: rotate left`;
     case "rotate-right":
       return `${treeLabel} ${comparisonState.rotationLabel || "rebalance"}: rotate right`;
+    case "colors-restored":
+      return "Red-Black colors restored";
+    case "complete":
+      return `${treeLabel} ${comparisonState.kind?.includes("delete") ? "delete" : "insert"} complete`;
     case "color-flip":
       return "Flip colors to restore Red-Black rules";
     case "move-red-left":
@@ -117,14 +125,19 @@ export default function TreeVisualizer({
   onAddChild,
   onDeleteNode,
   onNodeValueChange,
+  onNodeColorChange,
   editableNodeId,
   height = 420,
   compact = false,
   showStats = true,
 }) {
   const containerRef = useRef(null);
-  const [dimensions, setDimensions] = useState({ width: 700, height });
+  const [dimensions, setDimensions] = useState({
+    width: 700,
+    height: typeof height === "number" ? height : 420,
+  });
   const [draftValue, setDraftValue] = useState("");
+  const usesFillHeight = typeof height === "string";
 
   useEffect(() => {
     function syncDimensions() {
@@ -134,7 +147,7 @@ export default function TreeVisualizer({
 
       setDimensions({
         width: containerRef.current.offsetWidth,
-        height,
+        height: typeof height === "number" ? height : containerRef.current.offsetHeight,
       });
     }
 
@@ -151,17 +164,39 @@ export default function TreeVisualizer({
   const currentComparedNodeId = comparisonState?.currentNodeId || null;
   const insertedNodeId = comparisonState?.insertedNodeId || null;
   const comparisonTheme = getComparisonTheme(comparisonState);
+  const treeLayoutKey = useMemo(() => {
+    const parts = [];
+
+    function walk(node) {
+      if (!node) {
+        return;
+      }
+
+      parts.push(`${node.id}:${node.value}:${node.color}:${node.height}`);
+      walk(node.left);
+      walk(node.right);
+    }
+
+    walk(tree);
+    return [
+      dimensions.width,
+      height,
+      comparisonState?.decision || "clean",
+      comparisonState?.currentNodeId || "none",
+      parts.join("|"),
+    ].join("::");
+  }, [comparisonState?.currentNodeId, comparisonState?.decision, dimensions.width, height, tree]);
+  const estimatedLevelGap = compact ? 76 : 110;
   const translateY = nodeCount <= 1
     ? dimensions.height / 2
-    : compact
-      ? Math.max(88, dimensions.height * 0.22)
-      : 70;
-  const zoom = compact
-    ? Math.max(
-        0.42,
-        Math.min(0.92, 0.96 - Math.max(0, currentTreeHeight - 2) * 0.1 - Math.max(0, nodeCount - 7) * 0.015),
-      )
-    : 1;
+    : Math.max(96, dimensions.height / 2 - ((currentTreeHeight - 1) * estimatedLevelGap) / 2);
+  const zoom = Math.max(
+    compact ? 0.42 : 0.58,
+    Math.min(
+      compact ? 0.92 : 1,
+      (compact ? 0.96 : 0.98) - Math.max(0, currentTreeHeight - 2) * 0.08 - Math.max(0, nodeCount - 7) * 0.012,
+    ),
+  );
 
   useEffect(() => {
     if (!editableNodeId || !tree) {
@@ -191,7 +226,10 @@ export default function TreeVisualizer({
 
   if (!tree || !d3Data) {
     return (
-      <div className="flex h-[360px] flex-col items-center justify-center gap-4 rounded-[2rem] border border-dashed border-white/15 bg-slate-950/30 px-6 text-center text-sm text-slate-400 light:border-slate-300 light:bg-slate-100 light:text-slate-600">
+      <div
+        className={`flex flex-col items-center justify-center gap-4 rounded-[2rem] border border-dashed border-white/15 bg-slate-950/30 px-6 text-center text-sm text-slate-400 light:border-slate-300 light:bg-slate-100 light:text-slate-600 ${usesFillHeight ? "h-full min-h-[360px]" : "h-[360px]"}`}
+        style={usesFillHeight ? undefined : { height }}
+      >
         <p>Start with a blank workspace and create the root node.</p>
         {onAddRoot ? (
           <button
@@ -207,7 +245,7 @@ export default function TreeVisualizer({
   }
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${usesFillHeight ? "h-full min-h-0" : ""}`}>
       <div
         ref={containerRef}
         className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/40 light:border-slate-200 light:bg-white"
@@ -224,6 +262,7 @@ export default function TreeVisualizer({
         ) : null}
 
         <Tree
+          key={treeLayoutKey}
           data={d3Data}
           pathFunc="elbow"
           translate={{ x: dimensions.width / 2, y: translateY }}
@@ -266,43 +305,69 @@ export default function TreeVisualizer({
             const isCurrentCompared = currentComparedNodeId === nodeDatum.nodeId;
             const isInserted = insertedNodeId === nodeDatum.nodeId;
             const isTraversalNode = comparisonState?.kind === "tree-traverse" && isCurrentCompared;
-            const isRotationNode = comparisonState?.decision?.startsWith("rotate-");
+            const isRotationStep = comparisonState?.decision?.startsWith("rotate-");
+            const isRotationNode = isRotationStep && (isHighlighted || isOnComparedPath || isCurrentCompared);
             const isColorFixNode = comparisonState?.decision === "color-flip";
-            const fill = isHighlighted
-              ? "#22d3ee"
-              : isInserted
-                ? "#06b6d4"
-                : isTraversalNode
-                  ? "#8b5cf6"
-                : isRotationNode
-                  ? "#ec4899"
-                : isColorFixNode
-                  ? "#14b8a6"
-                : isCurrentCompared
-                  ? "#f97316"
-                  : isOnComparedPath
-                    ? "#f59e0b"
-              : isEmpty
-                ? "#1e293b"
-                : isRedNode
-                  ? "#ef4444"
-                  : "#111827";
-            const stroke = isHighlighted
-              ? "#67e8f9"
-              : isInserted
-                ? "#a5f3fc"
+            const nodeColor = nodeDatum.attributes?.color === "red" ? "red" : "black";
+            const nextNodeColor = nodeColor === "red" ? "black" : "red";
+            const nodeFill = isEmpty
+              ? "#1e293b"
+              : isRedNode
+                ? "#ef4444"
+                : "#111827";
+            const stroke = isInserted
+              ? "#a5f3fc"
+              : isRotationNode
+                ? "#f9a8d4"
                 : isTraversalNode
                   ? "#ddd6fe"
+                  : isColorFixNode
+                    ? "#99f6e4"
+                    : isCurrentCompared
+                      ? "#fdba74"
+                      : isHighlighted
+                        ? "#67e8f9"
+                        : isOnComparedPath
+                          ? "#fde68a"
+                          : isEmpty
+                            ? "#38bdf8"
+                            : "#e2e8f0";
+            const ringStroke = isInserted
+              ? "#22d3ee"
+              : isTraversalNode
+                ? "#8b5cf6"
                 : isRotationNode
-                  ? "#f9a8d4"
-                : isColorFixNode
-                  ? "#99f6e4"
-                : isCurrentCompared
-                  ? "#fdba74"
-                  : isOnComparedPath
-                    ? "#fde68a"
-                    : isEmpty
-                      ? "#38bdf8"
+                  ? "#ec4899"
+                  : isColorFixNode
+                    ? "#14b8a6"
+                    : isCurrentCompared
+                      ? "#f59e0b"
+                      : isHighlighted
+                        ? "#22d3ee"
+                        : isOnComparedPath
+                          ? "#f59e0b"
+                          : null;
+            const actionLabel = isInserted
+              ? "PLACED"
+              : isTraversalNode
+                ? "VISIT"
+                : isRotationNode
+                  ? "ROTATE"
+                  : isColorFixNode
+                    ? "FIX"
+                    : isCurrentCompared
+                      ? "COMPARE"
+                      : "";
+            const actionLabelFill = isInserted
+              ? "#a5f3fc"
+              : isTraversalNode
+                ? "#ddd6fe"
+                : isRotationNode
+                  ? "#fbcfe8"
+                  : isColorFixNode
+                    ? "#ccfbf1"
+                    : isCurrentCompared
+                      ? "#fed7aa"
                       : "#e2e8f0";
 
             return (
@@ -310,11 +375,11 @@ export default function TreeVisualizer({
                 onClick={() => onNodeClick?.(nodeDatum.nodeId, nodeDatum)}
                 style={{ cursor: onNodeClick ? "pointer" : "default" }}
               >
-                {isCurrentCompared || isInserted ? (
+                {ringStroke ? (
                   <circle
-                    r={isInserted ? "38" : "34"}
+                    r={isInserted ? "38" : isRotationNode ? "36" : "34"}
                     fill="transparent"
-                    stroke={isInserted ? "#22d3ee" : isTraversalNode ? "#8b5cf6" : isRotationNode ? "#ec4899" : isColorFixNode ? "#14b8a6" : "#f59e0b"}
+                    stroke={ringStroke}
                     strokeWidth="2"
                     opacity="0.85"
                     className="tree-node-pulse"
@@ -322,7 +387,7 @@ export default function TreeVisualizer({
                 ) : null}
                 <circle
                   r="26"
-                  fill={fill}
+                  fill={nodeFill}
                   stroke={stroke}
                   strokeWidth="2"
                   strokeDasharray={isEmpty ? "5 3" : "0"}
@@ -362,28 +427,16 @@ export default function TreeVisualizer({
                     {nodeDatum.name}
                   </text>
                 )}
-                {isCurrentCompared ? (
+                {actionLabel ? (
                   <text
-                    fill={isTraversalNode ? "#ddd6fe" : isRotationNode ? "#fbcfe8" : isColorFixNode ? "#ccfbf1" : "#fed7aa"}
+                    fill={actionLabelFill}
                     stroke="none"
                     x="0"
-                    y="-36"
+                    y="-42"
                     textAnchor="middle"
-                    style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.8 }}
+                    style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0 }}
                   >
-                    {isTraversalNode ? "VISIT" : isRotationNode ? "ROTATE" : isColorFixNode ? "FIX" : "COMPARE"}
-                  </text>
-                ) : null}
-                {isInserted ? (
-                  <text
-                    fill="#a5f3fc"
-                    stroke="none"
-                    x="0"
-                    y="-36"
-                    textAnchor="middle"
-                    style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.8 }}
-                  >
-                    PLACED
+                    {actionLabel}
                   </text>
                 ) : null}
                 {onDeleteNode ? (
@@ -405,6 +458,33 @@ export default function TreeVisualizer({
                       style={{ fontSize: 14, fontWeight: 700 }}
                     >
                       -
+                    </text>
+                  </g>
+                ) : null}
+                {onNodeColorChange && !isEmpty ? (
+                  <g
+                    transform="translate(44,-44)"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onNodeColorChange(nodeDatum.nodeId, nextNodeColor);
+                    }}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <circle
+                      r="13"
+                      fill={nodeColor === "red" ? "#7f1d1d" : "#111827"}
+                      stroke={nodeColor === "red" ? "#fca5a5" : "#cbd5e1"}
+                      strokeWidth="1.5"
+                    />
+                    <text
+                      fill="#f8fafc"
+                      stroke="none"
+                      x="0"
+                      y="4"
+                      textAnchor="middle"
+                      style={{ fontSize: 11, fontWeight: 700 }}
+                    >
+                      {nodeColor === "red" ? "R" : "B"}
                     </text>
                   </g>
                 ) : null}

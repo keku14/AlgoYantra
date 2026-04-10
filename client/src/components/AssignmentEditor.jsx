@@ -6,6 +6,7 @@ import { createTreeFromValues, getTreeTypeMeta } from "@algoyantra/shared";
 
 import api from "../api/client.js";
 import SectionCard from "./SectionCard.jsx";
+import SelectMenu from "./SelectMenu.jsx";
 import TreeVisualizer from "./TreeVisualizer.jsx";
 
 const treeTypes = getTreeTypeMeta();
@@ -14,7 +15,7 @@ const defaultForm = {
   title: "",
   description: "",
   treeType: "bst",
-  xpReward: 120,
+  xpReward: 100,
   dueDate: "",
   promptValues: "",
 };
@@ -51,7 +52,7 @@ export default function AssignmentEditor({ assignment = null, onSaved, onCancel 
       title: assignment.title || "",
       description: assignment.description || "",
       treeType: assignment.treeType || "bst",
-      xpReward: Number(assignment.xpReward || 120),
+      xpReward: Number(assignment.xpReward || 100),
       dueDate: formatDateValue(assignment.dueDate),
       promptValues: Array.isArray(assignment.promptValues) ? assignment.promptValues.join(", ") : "",
     });
@@ -134,17 +135,15 @@ export default function AssignmentEditor({ assignment = null, onSaved, onCancel 
             </label>
             <label className="space-y-2">
               <span className="text-sm text-slate-300 light:text-slate-700">Tree type</span>
-              <select
+              <SelectMenu
                 value={form.treeType}
-                onChange={(event) => updateField("treeType", event.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white light:border-slate-200 light:bg-white light:text-slate-900"
-              >
-                {treeTypes.map((treeType) => (
-                  <option key={treeType.id} value={treeType.id}>
-                    {treeType.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(nextValue) => updateField("treeType", nextValue)}
+                options={treeTypes.map((treeType) => ({
+                  value: treeType.id,
+                  label: treeType.label,
+                }))}
+                className="w-full"
+              />
             </label>
           </div>
 

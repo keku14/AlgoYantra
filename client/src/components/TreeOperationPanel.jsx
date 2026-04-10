@@ -2,6 +2,14 @@ import { useState } from "react";
 import { Redo2, Trash2, Undo2 } from "lucide-react";
 
 import { applyTreeOperation } from "@algoyantra/shared";
+import SelectMenu from "./SelectMenu.jsx";
+
+const traversalOptions = [
+  { value: "inorder", label: "Inorder" },
+  { value: "preorder", label: "Preorder" },
+  { value: "postorder", label: "Postorder" },
+  { value: "levelorder", label: "Level order" },
+];
 
 export default function TreeOperationPanel({
   treeType,
@@ -94,16 +102,12 @@ export default function TreeOperationPanel({
             placeholder="Node value"
             className="min-w-[140px] flex-1 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none transition focus:border-cyan-300/50 light:border-slate-200 light:bg-white light:text-slate-900"
           />
-          <select
+          <SelectMenu
             value={order}
-            onChange={(event) => setOrder(event.target.value)}
-            className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none transition focus:border-cyan-300/50 light:border-slate-200 light:bg-white light:text-slate-900"
-          >
-            <option value="inorder">Inorder</option>
-            <option value="preorder">Preorder</option>
-            <option value="postorder">Postorder</option>
-            <option value="levelorder">Level order</option>
-          </select>
+            onChange={setOrder}
+            options={traversalOptions}
+            className="min-w-[176px]"
+          />
           <button
             type="button"
             onClick={() => handleOperation("insert")}

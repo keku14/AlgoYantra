@@ -44,6 +44,10 @@ function getValidator(treeType) {
 }
 
 function starterNotes(treeType) {
+  if (!treeType) {
+    return ["Choose a tree type to start teaching in the workspace."];
+  }
+
   return [
     `Selected ${treeTypes.find((treeTypeMeta) => treeTypeMeta.id === treeType)?.label || "tree"} workspace.`,
     "Use Insert, Delete, and Traverse to build a live teaching sequence.",
@@ -71,20 +75,25 @@ function formatOperationLabel(operation) {
 }
 
 export default function TeacherTreeStudio() {
-  const [selectedTreeType, setSelectedTreeType] = useState("bst");
+  const [selectedTreeType, setSelectedTreeType] = useState(null);
   const treeHistory = useHistoryState(null);
-  const [notes, setNotes] = useState(starterNotes("bst"));
+  const [notes, setNotes] = useState(starterNotes(null));
   const [playbackSteps, setPlaybackSteps] = useState([]);
   const [activeStepIndex, setActiveStepIndex] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [operationHistory, setOperationHistory] = useState([]);
-  const [showTreePicker, setShowTreePicker] = useState(false);
+  const [showTreePicker, setShowTreePicker] = useState(true);
   const currentStep = activeStepIndex >= 0 ? playbackSteps[activeStepIndex] : null;
   const displayTree = currentStep?.tree ?? treeHistory.present;
   const highlights = currentStep?.highlights || [];
   const comparisonState = currentStep?.meta || null;
+  const isTreeSelected = Boolean(selectedTreeType);
 
-  const validation = useMemo(() => getValidator(selectedTreeType)(treeHistory.present), [selectedTreeType, treeHistory.present]);
+  const validation = useMemo(() => (
+    selectedTreeType
+      ? getValidator(selectedTreeType)(treeHistory.present)
+      : { isValid: true, issues: [] }
+  ), [selectedTreeType, treeHistory.present]);
 
   useEffect(() => {
     if (!isPlaying || activeStepIndex < 0 || activeStepIndex >= playbackSteps.length - 1) {
@@ -122,6 +131,13 @@ export default function TeacherTreeStudio() {
   }
 
   function handleOperation(operation, result) {
+    if (operation.action === "clear") {
+      setNotes(starterNotes(selectedTreeType));
+      setOperationHistory([]);
+      clearPlayback();
+      return;
+    }
+
     setPlaybackSteps(result.steps || []);
     setActiveStepIndex(result.steps?.length ? 0 : -1);
     setIsPlaying(Boolean(result.steps?.length > 1));
@@ -173,27 +189,34 @@ export default function TeacherTreeStudio() {
 
   return (
     <div className="space-y-6">
-      <SectionCard>
-        <div className="space-y-5">
-          <div className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-            <div className="min-w-0 flex-1">
-              <TreeOperationPanel
-                treeType={selectedTreeType}
-                tree={treeHistory.present}
-                onTreeChange={handleTreeChange}
-                onOperation={handleOperation}
-                notes={notes}
-                onResetNotes={setNotes}
-                onUndo={handleUndo}
-                onRedo={handleRedo}
-                canUndo={treeHistory.canUndo}
-                canRedo={treeHistory.canRedo}
-                title="Algo controls"
-                compact
-              />
-            </div>
+      <SectionCard className="max-h-[calc(100vh-6rem)] min-h-[680px] overflow-y-auto p-4 md:p-5">
+        <div className="flex min-h-0 flex-col gap-4">
+          <div className="relative z-30 shrink-0 rounded-[2rem] border border-white/10 bg-white/5 p-3 light:border-slate-200 light:bg-white">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                {isTreeSelected ? (
+                  <TreeOperationPanel
+                    treeType={selectedTreeType}
+                    tree={treeHistory.present}
+                    onTreeChange={handleTreeChange}
+                    onOperation={handleOperation}
+                    notes={notes}
+                    onResetNotes={setNotes}
+                    onUndo={handleUndo}
+                    onRedo={handleRedo}
+                    canUndo={treeHistory.canUndo}
+                    canRedo={treeHistory.canRedo}
+                    title="Algo controls"
+                    compact
+                  />
+                ) : (
+                  <div className="rounded-[2rem] border border-dashed border-white/15 bg-slate-950/35 p-4 text-sm text-slate-300 light:border-slate-200 light:bg-slate-50 light:text-slate-700">
+                    Choose the tree you want to teach first.
+                  </div>
+                )}
+              </div>
 
-            <div className="relative shrink-0">
+            <div className="relative z-40 shrink-0">
               <button
                 type="button"
                 onClick={() => {
@@ -205,84 +228,95 @@ export default function TeacherTreeStudio() {
                 <Trees size={17} />
               </button>
               {showTreePicker ? (
-                <div className="absolute right-0 top-12 z-20 w-72 rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-3 shadow-2xl backdrop-blur light:border-slate-200 light:bg-white">
-                  <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 light:text-slate-600">
-                    Select tree
-                  </p>
-                  <div className="space-y-2">
-                    {treeTypes.map((treeType) => (
-                      <button
-                        key={treeType.id}
-                        type="button"
-                        onClick={() => handleTreeTypeChange(treeType.id)}
-                        className={`w-full rounded-2xl border px-4 py-3 text-left text-sm font-medium transition ${
-                          selectedTreeType === treeType.id
-                            ? `border-transparent bg-gradient-to-r ${treeType.accent} text-slate-950`
-                            : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 light:border-slate-200 light:bg-slate-50 light:text-slate-700"
-                        }`}
-                      >
-                        {treeType.label}
-                      </button>
-                    ))}
+                <>
+                  <div
+                    className="fixed inset-0 z-40 bg-slate-950/20 backdrop-blur-sm"
+                    onClick={() => setShowTreePicker(false)}
+                  />
+                  <div className="absolute right-0 top-12 z-50 w-72 overflow-hidden rounded-[1.25rem] border border-white/10 bg-slate-950/98 shadow-2xl light:border-slate-200 light:bg-white">
+                    <p className="px-4 pb-2 pt-3 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 light:text-slate-600">
+                      Select tree
+                    </p>
+                    <div className="max-h-64 overflow-y-auto p-2">
+                      {treeTypes.map((treeType) => (
+                        <button
+                          key={treeType.id}
+                          type="button"
+                          onClick={() => handleTreeTypeChange(treeType.id)}
+                          className={`w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition ${
+                            selectedTreeType === treeType.id
+                              ? "bg-cyan-400/15 text-cyan-100 light:bg-cyan-50 light:text-cyan-700"
+                              : "text-slate-200 hover:bg-white/8 light:text-slate-700 light:hover:bg-slate-100"
+                          }`}
+                        >
+                          {treeType.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                </>
               ) : null}
             </div>
           </div>
+          </div>
 
-          <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,0.85fr)]">
-            <div className="rounded-[2rem] border border-white/10 bg-slate-950/35 p-4 light:border-slate-200 light:bg-slate-50">
-              <div className="mb-4 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => moveStep(-1)}
-                  disabled={!playbackSteps.length || activeStepIndex <= 0}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-100 transition disabled:opacity-40 light:border-slate-200 light:bg-white light:text-slate-700"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <button
-                  type="button"
-                  onClick={togglePlayback}
-                  disabled={!playbackSteps.length}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-100 transition disabled:opacity-40 light:border-slate-200 light:bg-white light:text-slate-700"
-                >
-                  {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => moveStep(1)}
-                  disabled={!playbackSteps.length || activeStepIndex >= playbackSteps.length - 1}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-100 transition disabled:opacity-40 light:border-slate-200 light:bg-white light:text-slate-700"
-                >
-                  <ChevronRight size={18} />
-                </button>
-              </div>
+          <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(360px,0.85fr)]">
+            <div className="flex h-[clamp(620px,calc(100vh-15rem),760px)] min-h-0 flex-col rounded-[2rem] border border-white/10 bg-slate-950/35 p-4 light:border-slate-200 light:bg-slate-50">
+              <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => moveStep(-1)}
+                    disabled={!playbackSteps.length || activeStepIndex <= 0}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-100 transition disabled:opacity-40 light:border-slate-200 light:bg-white light:text-slate-700"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={togglePlayback}
+                    disabled={!playbackSteps.length}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-100 transition disabled:opacity-40 light:border-slate-200 light:bg-white light:text-slate-700"
+                  >
+                    {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveStep(1)}
+                    disabled={!playbackSteps.length || activeStepIndex >= playbackSteps.length - 1}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-100 transition disabled:opacity-40 light:border-slate-200 light:bg-white light:text-slate-700"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
 
-              <TreeVisualizer
-                tree={displayTree}
-                highlights={highlights}
-                comparisonState={comparisonState}
-                height={620}
-                showStats={false}
-              />
-
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 light:border-slate-200 light:bg-white light:text-slate-700">
-                  {treeTypes.find((treeType) => treeType.id === selectedTreeType)?.label}
-                </div>
-                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 light:border-slate-200 light:bg-white light:text-slate-700">
-                  Nodes {countNodes(displayTree)}
-                </div>
-                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 light:border-slate-200 light:bg-white light:text-slate-700">
-                  Height {treeHeight(displayTree)}
-                </div>
-                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 light:border-slate-200 light:bg-white light:text-slate-700">
-                  Replay {playbackSteps.length ? `${Math.max(activeStepIndex + 1, 1)}/${playbackSteps.length}` : "Ready"}
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 light:border-slate-200 light:bg-white light:text-slate-700">
+                    {treeTypes.find((treeType) => treeType.id === selectedTreeType)?.label || "Choose tree"}
+                  </div>
+                  <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 light:border-slate-200 light:bg-white light:text-slate-700">
+                    Nodes {countNodes(displayTree)}
+                  </div>
+                  <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 light:border-slate-200 light:bg-white light:text-slate-700">
+                    Height {treeHeight(displayTree)}
+                  </div>
+                  <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 light:border-slate-200 light:bg-white light:text-slate-700">
+                    Replay {playbackSteps.length ? `${Math.max(activeStepIndex + 1, 1)}/${playbackSteps.length}` : "Ready"}
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-4 rounded-[1.5rem] border border-cyan-300/15 bg-cyan-500/10 p-4">
+              <div className="min-h-[460px] flex-1">
+                <TreeVisualizer
+                  tree={displayTree}
+                  highlights={highlights}
+                  comparisonState={comparisonState}
+                  height="100%"
+                  showStats={false}
+                />
+              </div>
+
+              <div className="mt-3 max-h-20 shrink-0 overflow-y-auto rounded-[1.5rem] border border-cyan-300/15 bg-cyan-500/10 p-4">
                 <div className="flex items-center gap-2 text-cyan-100 light:text-cyan-700">
                   <ArrowRight size={16} />
                   <p className="text-sm font-semibold">
@@ -292,7 +326,7 @@ export default function TeacherTreeStudio() {
               </div>
 
               {!validation.isValid ? (
-                <div className="mt-4 rounded-[1.5rem] border border-rose-300/15 bg-rose-500/10 p-4">
+                <div className="mt-3 max-h-20 shrink-0 overflow-y-auto rounded-[1.5rem] border border-rose-300/15 bg-rose-500/10 p-4">
                   <div className="flex items-center gap-2 text-rose-100 light:text-rose-700">
                     <ShieldCheck size={16} />
                     <p className="text-sm font-semibold">
@@ -303,13 +337,13 @@ export default function TeacherTreeStudio() {
               ) : null}
             </div>
 
-            <div className="rounded-[2rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-              <div className="mb-4 flex items-center gap-2 text-white light:text-slate-900">
+            <div className="flex h-[clamp(620px,calc(100vh-15rem),760px)] min-h-0 flex-col rounded-[2rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
+              <div className="mb-3 flex shrink-0 items-center gap-2 text-white light:text-slate-900">
                 <History size={16} />
                 <p className="text-sm font-semibold">Operation timeline</p>
               </div>
 
-              <div className="h-[760px] space-y-3 overflow-y-auto pr-1">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
                 {operationHistory.length ? [...operationHistory].reverse().map((entry, index) => (
                   <div
                     key={entry.id}

@@ -214,31 +214,42 @@ function buildTraversalPlayback(tree, order, options = {}) {
   const traversal = [];
   const visitedPathIds = [];
 
-  function recordVisit(node, phaseLabel, extraMeta = {}) {
+  function childLabel(node) {
+    return node ? String(node.value) : "empty";
+  }
+
+  function recordTraversalStep(description, node, extraMeta = {}, highlightIds = []) {
+    const activeHighlights = highlightIds.length ? highlightIds : node?.id ? [node.id] : [];
+    recorder.record(description, tree, {
+      action: "traverse",
+      highlights: activeHighlights,
+      traversal: [...traversal],
+      meta: {
+        kind: "tree-traverse",
+        order,
+        pathIds: dedupe([...visitedPathIds, ...activeHighlights]),
+        currentNodeId: node?.id || null,
+        currentValue: node?.value ?? null,
+        traversal: [...traversal],
+        ...extraMeta,
+      },
+    });
+  }
+
+  function recordVisit(node, reason, extraMeta = {}) {
     if (!node || !isFilledNodeValue(node.value)) {
       return;
     }
 
     traversal.push(Number(node.value));
     visitedPathIds.push(node.id);
-    recorder.record(
-      `${phaseLabel} ${node.value}. Traversal so far: ${traversal.join(" -> ")}.`,
-      tree,
+    recordTraversalStep(
+      `${reason} Visit ${node.value}. Traversal so far: ${traversal.join(" -> ")}.`,
+      node,
       {
-        action: "traverse",
-        highlights: [node.id],
-        traversal: [...traversal],
-        meta: {
-          kind: "tree-traverse",
-          order,
-          pathIds: [...visitedPathIds],
-          currentNodeId: node.id,
-          currentValue: node.value,
-          traversal: [...traversal],
-          decision: "visit",
-          phase: phaseLabel.toLowerCase(),
-          ...extraMeta,
-        },
+        decision: "visit",
+        phase: "visit",
+        ...extraMeta,
       },
     );
   }
@@ -248,8 +259,42 @@ function buildTraversalPlayback(tree, order, options = {}) {
       return;
     }
 
-    recordVisit(node, "Visit", { strategy: "preorder" });
+    recordVisit(node, `Preorder uses Node -> Left -> Right, so the first action at ${node.value} is to record the node itself.`, {
+      strategy: "preorder",
+    });
+
+    if (node.left) {
+      recordTraversalStep(
+        `After visiting ${node.value}, preorder explores the left subtree next. Move to left child ${childLabel(node.left)}.`,
+        node.left,
+        { decision: "go-left", phase: "left", strategy: "preorder" },
+        [node.id, node.left.id],
+      );
+    } else {
+      recordTraversalStep(
+        `${node.value} has no left child, so preorder skips the left subtree and checks the right side.`,
+        node,
+        { decision: "skip-left", phase: "left", strategy: "preorder" },
+      );
+    }
+
     visitPreorder(node.left);
+
+    if (node.right) {
+      recordTraversalStep(
+        `The left subtree of ${node.value} is done. Preorder now moves to right child ${childLabel(node.right)}.`,
+        node.right,
+        { decision: "go-right", phase: "right", strategy: "preorder" },
+        [node.id, node.right.id],
+      );
+    } else {
+      recordTraversalStep(
+        `${node.value} has no right child. The preorder work for this subtree is complete.`,
+        node,
+        { decision: "skip-right", phase: "right", strategy: "preorder" },
+      );
+    }
+
     visitPreorder(node.right);
   }
 
@@ -258,8 +303,41 @@ function buildTraversalPlayback(tree, order, options = {}) {
       return;
     }
 
+    if (node.left) {
+      recordTraversalStep(
+        `At ${node.value}, inorder uses Left -> Node -> Right. Because left child ${childLabel(node.left)} exists, go left before visiting ${node.value}.`,
+        node.left,
+        { decision: "go-left", phase: "left", strategy: "inorder" },
+        [node.id, node.left.id],
+      );
+    } else {
+      recordTraversalStep(
+        `At ${node.value}, inorder first checks the left subtree. There is no left child, so ${node.value} is ready to visit.`,
+        node,
+        { decision: "left-empty", phase: "left", strategy: "inorder" },
+      );
+    }
+
     visitInorder(node.left);
-    recordVisit(node, "Visit", { strategy: "inorder" });
+    recordVisit(node, `The left subtree of ${node.value} is finished, so inorder now records the node in the middle.`, {
+      strategy: "inorder",
+    });
+
+    if (node.right) {
+      recordTraversalStep(
+        `After visiting ${node.value}, inorder finishes with the right subtree. Move to right child ${childLabel(node.right)}.`,
+        node.right,
+        { decision: "go-right", phase: "right", strategy: "inorder" },
+        [node.id, node.right.id],
+      );
+    } else {
+      recordTraversalStep(
+        `${node.value} has no right child. The inorder work for this subtree is complete.`,
+        node,
+        { decision: "right-empty", phase: "right", strategy: "inorder" },
+      );
+    }
+
     visitInorder(node.right);
   }
 
@@ -268,9 +346,42 @@ function buildTraversalPlayback(tree, order, options = {}) {
       return;
     }
 
+    if (node.left) {
+      recordTraversalStep(
+        `At ${node.value}, postorder uses Left -> Right -> Node. Start with left child ${childLabel(node.left)} and delay visiting ${node.value}.`,
+        node.left,
+        { decision: "go-left", phase: "left", strategy: "postorder" },
+        [node.id, node.left.id],
+      );
+    } else {
+      recordTraversalStep(
+        `${node.value} has no left child, so postorder checks the right subtree before visiting ${node.value}.`,
+        node,
+        { decision: "skip-left", phase: "left", strategy: "postorder" },
+      );
+    }
+
     visitPostorder(node.left);
+
+    if (node.right) {
+      recordTraversalStep(
+        `The left subtree of ${node.value} is done. Postorder now moves to right child ${childLabel(node.right)} before visiting ${node.value}.`,
+        node.right,
+        { decision: "go-right", phase: "right", strategy: "postorder" },
+        [node.id, node.right.id],
+      );
+    } else {
+      recordTraversalStep(
+        `${node.value} has no right child, so both child checks are complete for this node.`,
+        node,
+        { decision: "skip-right", phase: "right", strategy: "postorder" },
+      );
+    }
+
     visitPostorder(node.right);
-    recordVisit(node, "Visit", { strategy: "postorder" });
+    recordVisit(node, `Both subtrees of ${node.value} have been handled, so postorder can finally record the node.`, {
+      strategy: "postorder",
+    });
   }
 
   if (order === "levelorder") {
@@ -278,34 +389,26 @@ function buildTraversalPlayback(tree, order, options = {}) {
 
     if (tree) {
       queue.push(tree);
+      recordTraversalStep(
+        `Level order uses a queue. Start by putting the root ${tree.value} into the queue.`,
+        tree,
+        { decision: "queue-start", phase: "queue", strategy: "levelorder", queueValues: [tree.value] },
+      );
     }
 
     while (queue.length) {
+      const queueBefore = queue.map((node) => node.value);
       const current = queue.shift();
 
       if (isFilledNodeValue(current?.value)) {
-        traversal.push(Number(current.value));
-        recorder.record(
-          `Visit ${current.value}. Traversal so far: ${traversal.join(" -> ")}.`,
-          tree,
+        recordVisit(
+          current,
+          `Queue before removing the front: ${queueBefore.join(" -> ")}. Level order visits the front node first.`,
           {
-            action: "traverse",
-            highlights: [current.id],
-            traversal: [...traversal],
-            meta: {
-              kind: "tree-traverse",
-              order,
-              pathIds: [...visitedPathIds, current.id],
-              currentNodeId: current.id,
-              currentValue: current.value,
-              traversal: [...traversal],
-              decision: "visit",
-              phase: "visit",
-              strategy: "levelorder",
-            },
+            strategy: "levelorder",
+            queueValues: queueBefore,
           },
         );
-        visitedPathIds.push(current.id);
       }
 
       if (current?.left) {
@@ -314,6 +417,26 @@ function buildTraversalPlayback(tree, order, options = {}) {
 
       if (current?.right) {
         queue.push(current.right);
+      }
+
+      if (current) {
+        const addedChildren = [current.left, current.right]
+          .filter(Boolean)
+          .map((node) => node.value);
+        const queueAfter = queue.map((node) => node.value);
+        recordTraversalStep(
+          addedChildren.length
+            ? `After visiting ${current.value}, add its children ${addedChildren.join(" and ")} to the back of the queue. Queue is now ${queueAfter.join(" -> ")}.`
+            : `After visiting ${current.value}, it has no children to add. Queue is now ${queueAfter.join(" -> ") || "empty"}.`,
+          current,
+          {
+            decision: "enqueue-children",
+            phase: "queue",
+            strategy: "levelorder",
+            queueValues: queueAfter,
+          },
+          [current.id, current.left?.id, current.right?.id].filter(Boolean),
+        );
       }
     }
 
@@ -402,6 +525,18 @@ export function setNodeValue(tree, nodeId, nextValue) {
   }
 
   target.value = isFilledNodeValue(nextValue) ? Number(nextValue) : null;
+  return workingTree;
+}
+
+export function setNodeColor(tree, nodeId, nextColor) {
+  const workingTree = cloneTree(tree);
+  const target = findNodeById(workingTree, nodeId);
+
+  if (!target) {
+    return workingTree;
+  }
+
+  target.color = nextColor === COLORS.RED ? COLORS.RED : COLORS.BLACK;
   return workingTree;
 }
 
@@ -637,27 +772,27 @@ function parseAVLNotes(notes = []) {
   return notes.flatMap((note) => {
     let match = note.match(/^Right rotation at (-?\d+) for LL imbalance\.$/);
     if (match) {
-      return [{ type: "rotation", rotation: "right", atValue: Number(match[1]), label: "LL rebalance" }];
+      return [{ type: "rotation", rotation: "right", atValue: Number(match[1]), caseType: "LL", label: "LL rebalance" }];
     }
 
     match = note.match(/^Left rotation at (-?\d+), then right rotation at (-?\d+) for LR imbalance\.$/);
     if (match) {
       return [
-        { type: "rotation", rotation: "left", atValue: Number(match[1]), label: "LR rebalance" },
-        { type: "rotation", rotation: "right", atValue: Number(match[2]), label: "LR rebalance" },
+        { type: "rotation", rotation: "left", atValue: Number(match[1]), rootValue: Number(match[2]), caseType: "LR", label: "LR rebalance" },
+        { type: "rotation", rotation: "right", atValue: Number(match[2]), rootValue: Number(match[2]), caseType: "LR", label: "LR rebalance" },
       ];
     }
 
     match = note.match(/^Left rotation at (-?\d+) for RR imbalance\.$/);
     if (match) {
-      return [{ type: "rotation", rotation: "left", atValue: Number(match[1]), label: "RR rebalance" }];
+      return [{ type: "rotation", rotation: "left", atValue: Number(match[1]), caseType: "RR", label: "RR rebalance" }];
     }
 
     match = note.match(/^Right rotation at (-?\d+), then left rotation at (-?\d+) for RL imbalance\.$/);
     if (match) {
       return [
-        { type: "rotation", rotation: "right", atValue: Number(match[1]), label: "RL rebalance" },
-        { type: "rotation", rotation: "left", atValue: Number(match[2]), label: "RL rebalance" },
+        { type: "rotation", rotation: "right", atValue: Number(match[1]), rootValue: Number(match[2]), caseType: "RL", label: "RL rebalance" },
+        { type: "rotation", rotation: "left", atValue: Number(match[2]), rootValue: Number(match[2]), caseType: "RL", label: "RL rebalance" },
       ];
     }
 
@@ -738,6 +873,57 @@ function rotateRight(node) {
   return pivot;
 }
 
+function collectAVLRotationValues(tree, event) {
+  const root = findNodeByValue(tree, event.rootValue ?? event.atValue);
+
+  if (!root) {
+    return [event.atValue];
+  }
+
+  if (event.caseType === "LL") {
+    return [root.value, root.left?.value, root.left?.left?.value].filter((value) => value != null);
+  }
+
+  if (event.caseType === "RR") {
+    return [root.value, root.right?.value, root.right?.right?.value].filter((value) => value != null);
+  }
+
+  if (event.caseType === "LR") {
+    const inner = event.rotation === "right" ? root.left?.left : root.left?.right;
+    return [root.value, root.left?.value, inner?.value].filter((value) => value != null);
+  }
+
+  if (event.caseType === "RL") {
+    const inner = event.rotation === "left" ? root.right?.right : root.right?.left;
+    return [root.value, root.right?.value, inner?.value].filter((value) => value != null);
+  }
+
+  const rotationRoot = findNodeByValue(tree, event.atValue);
+  const pivot = event.rotation === "left" ? rotationRoot?.right : rotationRoot?.left;
+  const transfer = event.rotation === "left" ? pivot?.left : pivot?.right;
+  return [rotationRoot?.value, pivot?.value, transfer?.value].filter((value) => value != null);
+}
+
+function applyAVLRotationAtValue(tree, event) {
+  const workingTree = cloneTree(tree);
+
+  function rotateAt(node) {
+    if (!node) {
+      return null;
+    }
+
+    if (node.value === event.atValue) {
+      return event.rotation === "left" ? rotateLeft(node) : rotateRight(node);
+    }
+
+    node.left = rotateAt(node.left);
+    node.right = rotateAt(node.right);
+    return updateHeight(node);
+  }
+
+  return rotateAt(workingTree);
+}
+
 function rotateLeft(node) {
   const pivot = node.right;
   const transfer = pivot.left;
@@ -770,6 +956,33 @@ function rotateRightRB(node) {
   return pivot;
 }
 
+function collectRBRotationValues(tree, event) {
+  const rotationRoot = findNodeByValue(tree, event.atValue);
+  const pivot = event.rotation === "left" ? rotationRoot?.right : rotationRoot?.left;
+  const transfer = event.rotation === "left" ? pivot?.left : pivot?.right;
+  return [rotationRoot?.value, pivot?.value, transfer?.value].filter((value) => value != null);
+}
+
+function applyRBRotationAtValue(tree, event) {
+  const workingTree = cloneTree(tree);
+
+  function rotateAt(node) {
+    if (!node) {
+      return null;
+    }
+
+    if (node.value === event.atValue) {
+      return event.rotation === "left" ? rotateLeftRB(node) : rotateRightRB(node);
+    }
+
+    node.left = rotateAt(node.left);
+    node.right = rotateAt(node.right);
+    return node;
+  }
+
+  return rotateAt(workingTree);
+}
+
 function flipColors(node) {
   node.color = node.color === COLORS.RED ? COLORS.BLACK : COLORS.RED;
 
@@ -780,6 +993,17 @@ function flipColors(node) {
   if (node.right) {
     node.right.color = node.right.color === COLORS.RED ? COLORS.BLACK : COLORS.RED;
   }
+}
+
+function applyRBColorFlipAtValue(tree, atValue) {
+  const workingTree = cloneTree(tree);
+  const target = findNodeByValue(workingTree, atValue);
+
+  if (target) {
+    flipColors(target);
+  }
+
+  return workingTree;
 }
 
 function moveRedLeft(node) {
@@ -1649,21 +1873,31 @@ function rebalanceAVL(node, notes) {
   return node;
 }
 
-function avlInsertRecursive(node, value, notes) {
+function avlInsertWithoutRebalance(node, value, notes, insertedNodeId) {
   if (!node) {
     notes.push(`Inserted ${value} as a new AVL node.`);
-    return createNode(value);
+    return createNode(value, { id: insertedNodeId });
   }
 
   if (value < node.value) {
-    node.left = avlInsertRecursive(node.left, value, notes);
+    node.left = avlInsertWithoutRebalance(node.left, value, notes, insertedNodeId);
   } else if (value > node.value) {
-    node.right = avlInsertRecursive(node.right, value, notes);
+    node.right = avlInsertWithoutRebalance(node.right, value, notes, insertedNodeId);
   } else {
     notes.push(`Skipped duplicate AVL value ${value}.`);
     return node;
   }
 
+  return updateHeight(node);
+}
+
+function rebalanceAVLTree(node, notes) {
+  if (!node) {
+    return null;
+  }
+
+  node.left = rebalanceAVLTree(node.left, notes);
+  node.right = rebalanceAVLTree(node.right, notes);
   return rebalanceAVL(node, notes);
 }
 
@@ -1678,71 +1912,104 @@ export function avlInsert(tree, value, options = {}) {
     metaKind: "avl-insert",
     mode: "insert",
   });
-  const notes = [];
-  const nextTree = avlInsertRecursive(cloneTree(tree), numericValue, notes);
 
   if (searchMeta.found) {
     return {
-      tree: nextTree,
+      tree: cloneTree(tree),
       steps: recorder.steps,
-      notes,
+      notes: [`Skipped duplicate AVL value ${numericValue}.`],
     };
   }
 
-  const insertedNode = findNodeByValue(nextTree, numericValue);
-  recorder.record(`Inserted ${numericValue} into the AVL search path.`, nextTree, {
-    action: "insert",
-    highlights: insertedNode?.id ? [insertedNode.id] : [],
-    meta: {
-      kind: "avl-insert",
-      incomingValue: numericValue,
-      pathIds: insertedNode?.id ? [...searchMeta.pathIds, insertedNode.id] : [...searchMeta.pathIds],
-      currentNodeId: insertedNode?.id || null,
-      insertedNodeId: insertedNode?.id || null,
-      decision: insertedNode ? "placed" : "duplicate",
+  const insertedNodeId = createId();
+  const placementNotes = [];
+  const unbalancedTree = avlInsertWithoutRebalance(cloneTree(tree), numericValue, placementNotes, insertedNodeId);
+  const notes = [];
+  const nextTree = rebalanceAVLTree(cloneTree(unbalancedTree), notes);
+  const insertedNode = findNodeByValue(unbalancedTree, numericValue);
+  recorder.record(
+    `Inserted ${numericValue} at its normal BST position first. Now check AVL balance on the way back up.`,
+    unbalancedTree,
+    {
+      action: "insert",
+      highlights: insertedNode?.id ? [insertedNode.id] : [],
+      meta: {
+        kind: "avl-insert",
+        incomingValue: numericValue,
+        pathIds: insertedNode?.id ? [...searchMeta.pathIds, insertedNode.id] : [...searchMeta.pathIds],
+        currentNodeId: insertedNode?.id || null,
+        insertedNodeId: insertedNode?.id || null,
+        decision: insertedNode ? "placed" : "duplicate",
+      },
     },
-  });
+  );
 
+  let rotationPlaybackTree = cloneTree(unbalancedTree);
   parseAVLNotes(notes).forEach((event) => {
     if (event.type === "rotation") {
-      const highlightIds = findNodeIdsForValues(nextTree, [event.atValue]);
+      const rotationValues = collectAVLRotationValues(rotationPlaybackTree, event);
+      const afterRotationTree = applyAVLRotationAtValue(rotationPlaybackTree, event);
+      const beforeHighlightIds = findNodeIdsForValues(rotationPlaybackTree, rotationValues);
+      const afterHighlightIds = findNodeIdsForValues(afterRotationTree, rotationValues);
       recorder.record(
-        `${event.label || "AVL rebalance"} triggered a ${event.rotation} rotation at ${event.atValue}.`,
-        nextTree,
+        `${event.label || "AVL rebalance"} marks ${rotationValues.join(", ")} for a ${event.rotation} rotation at ${event.atValue}.`,
+        rotationPlaybackTree,
         {
           action: "compare",
-          highlights: highlightIds,
+          highlights: beforeHighlightIds,
           meta: {
             kind: "avl-insert",
             incomingValue: numericValue,
-            pathIds: highlightIds,
-            currentNodeId: highlightIds[0] || null,
+            pathIds: beforeHighlightIds,
+            currentNodeId: beforeHighlightIds[0] || null,
             decision: `rotate-${event.rotation}`,
             rotation: event.rotation,
+            rotationCase: event.caseType || null,
             rotationLabel: event.label || "rebalance",
+            rotationValues,
           },
         },
       );
+      recorder.record(
+        `${event.label || "AVL rebalance"} completed. The same values keep their sorted order after the ${event.rotation} rotation.`,
+        afterRotationTree,
+        {
+          action: "compare",
+          highlights: afterHighlightIds,
+          meta: {
+            kind: "avl-insert",
+            incomingValue: numericValue,
+            pathIds: afterHighlightIds,
+            currentNodeId: afterHighlightIds[0] || null,
+            decision: `rotate-${event.rotation}`,
+            rotation: event.rotation,
+            rotationCase: event.caseType || null,
+            rotationLabel: event.label || "rebalance",
+            rotationValues,
+          },
+        },
+      );
+      rotationPlaybackTree = afterRotationTree;
     }
   });
 
   return {
     tree: nextTree,
     steps: recorder.steps,
-    notes,
+    notes: [...placementNotes, ...notes],
   };
 }
 
-function avlDeleteRecursive(node, value, notes) {
+function avlDeleteWithoutRebalance(node, value, notes) {
   if (!node) {
     notes.push(`Value ${value} was not found in the AVL tree.`);
     return null;
   }
 
   if (value < node.value) {
-    node.left = avlDeleteRecursive(node.left, value, notes);
+    node.left = avlDeleteWithoutRebalance(node.left, value, notes);
   } else if (value > node.value) {
-    node.right = avlDeleteRecursive(node.right, value, notes);
+    node.right = avlDeleteWithoutRebalance(node.right, value, notes);
   } else if (!node.left || !node.right) {
     notes.push(`Deleted AVL node ${value} with at most one child.`);
     return node.left || node.right || null;
@@ -1750,10 +2017,10 @@ function avlDeleteRecursive(node, value, notes) {
     const successor = minNode(node.right);
     node.value = successor.value;
     notes.push(`Replaced AVL node ${value} with inorder successor ${successor.value}.`);
-    node.right = avlDeleteRecursive(node.right, successor.value, notes);
+    node.right = avlDeleteWithoutRebalance(node.right, successor.value, notes);
   }
 
-  return rebalanceAVL(node, notes);
+  return updateHeight(node);
 }
 
 export function avlDelete(tree, value, options = {}) {
@@ -1767,8 +2034,11 @@ export function avlDelete(tree, value, options = {}) {
     metaKind: "avl-delete",
     mode: "delete",
   });
-  const notes = [];
-  const nextTree = avlDeleteRecursive(cloneTree(tree), numericValue, notes);
+  const deleteNotes = [];
+  const unbalancedTree = avlDeleteWithoutRebalance(cloneTree(tree), numericValue, deleteNotes);
+  const rotationNotes = [];
+  const nextTree = rebalanceAVLTree(cloneTree(unbalancedTree), rotationNotes);
+  const notes = [...deleteNotes, ...rotationNotes];
   const parsedEvents = parseAVLNotes(notes);
   const successorEvent = parsedEvents.find((event) => event.type === "successor");
 
@@ -1792,7 +2062,7 @@ export function avlDelete(tree, value, options = {}) {
     );
   }
 
-  recorder.record(notes.join(" "), nextTree, {
+  recorder.record(deleteNotes.join(" "), unbalancedTree, {
     action: "delete",
     meta: {
       kind: "avl-delete",
@@ -1801,26 +2071,52 @@ export function avlDelete(tree, value, options = {}) {
     },
   });
 
+  let rotationPlaybackTree = cloneTree(unbalancedTree);
   parsedEvents.forEach((event) => {
     if (event.type === "rotation") {
-      const highlightIds = findNodeIdsForValues(nextTree, [event.atValue]);
+      const rotationValues = collectAVLRotationValues(rotationPlaybackTree, event);
+      const afterRotationTree = applyAVLRotationAtValue(rotationPlaybackTree, event);
+      const beforeHighlightIds = findNodeIdsForValues(rotationPlaybackTree, rotationValues);
+      const afterHighlightIds = findNodeIdsForValues(afterRotationTree, rotationValues);
       recorder.record(
-        `${event.label || "AVL rebalance"} triggered a ${event.rotation} rotation at ${event.atValue}.`,
-        nextTree,
+        `${event.label || "AVL rebalance"} marks ${rotationValues.join(", ")} for a ${event.rotation} rotation at ${event.atValue}.`,
+        rotationPlaybackTree,
         {
           action: "compare",
-          highlights: highlightIds,
+          highlights: beforeHighlightIds,
           meta: {
             kind: "avl-delete",
             targetValue: numericValue,
-            pathIds: highlightIds,
-            currentNodeId: highlightIds[0] || null,
+            pathIds: beforeHighlightIds,
+            currentNodeId: beforeHighlightIds[0] || null,
             decision: `rotate-${event.rotation}`,
             rotation: event.rotation,
+            rotationCase: event.caseType || null,
             rotationLabel: event.label || "rebalance",
+            rotationValues,
           },
         },
       );
+      recorder.record(
+        `${event.label || "AVL rebalance"} completed. The same values keep their sorted order after the ${event.rotation} rotation.`,
+        afterRotationTree,
+        {
+          action: "compare",
+          highlights: afterHighlightIds,
+          meta: {
+            kind: "avl-delete",
+            targetValue: numericValue,
+            pathIds: afterHighlightIds,
+            currentNodeId: afterHighlightIds[0] || null,
+            decision: `rotate-${event.rotation}`,
+            rotation: event.rotation,
+            rotationCase: event.caseType || null,
+            rotationLabel: event.label || "rebalance",
+            rotationValues,
+          },
+        },
+      );
+      rotationPlaybackTree = afterRotationTree;
     }
   });
 
@@ -1831,16 +2127,16 @@ export function avlDelete(tree, value, options = {}) {
   };
 }
 
-function rbInsertRecursive(node, value, notes) {
+function rbInsertRecursive(node, value, notes, insertedNodeId = null) {
   if (!node) {
     notes.push(`Inserted ${value} as a red node.`);
-    return createNode(value, { color: COLORS.RED });
+    return createNode(value, { color: COLORS.RED, id: insertedNodeId || undefined });
   }
 
   if (value < node.value) {
-    node.left = rbInsertRecursive(node.left, value, notes);
+    node.left = rbInsertRecursive(node.left, value, notes, insertedNodeId);
   } else if (value > node.value) {
-    node.right = rbInsertRecursive(node.right, value, notes);
+    node.right = rbInsertRecursive(node.right, value, notes, insertedNodeId);
   } else {
     notes.push(`Skipped duplicate Red-Black value ${value}.`);
   }
@@ -1863,6 +2159,23 @@ function rbInsertRecursive(node, value, notes) {
   return node;
 }
 
+function rbInsertWithoutRepair(node, value, notes, insertedNodeId) {
+  if (!node) {
+    notes.push(`Inserted ${value} as a red node.`);
+    return createNode(value, { color: COLORS.RED, id: insertedNodeId });
+  }
+
+  if (value < node.value) {
+    node.left = rbInsertWithoutRepair(node.left, value, notes, insertedNodeId);
+  } else if (value > node.value) {
+    node.right = rbInsertWithoutRepair(node.right, value, notes, insertedNodeId);
+  } else {
+    notes.push(`Skipped duplicate Red-Black value ${value}.`);
+  }
+
+  return node;
+}
+
 export function rbInsert(tree, value, options = {}) {
   const recorder = createRecorder(options.recordSteps);
   const numericValue = toNumber(value);
@@ -1874,23 +2187,26 @@ export function rbInsert(tree, value, options = {}) {
     metaKind: "rb-insert",
     mode: "insert",
   });
+  if (searchMeta.found) {
+    return {
+      tree: cloneTree(tree),
+      steps: recorder.steps,
+      notes: [`Skipped duplicate Red-Black value ${numericValue}.`],
+    };
+  }
+
+  const insertedNodeId = createId();
+  const placementNotes = [];
+  const unbalancedTree = rbInsertWithoutRepair(cloneTree(tree), numericValue, placementNotes, insertedNodeId);
   const notes = [];
-  const nextTree = rbInsertRecursive(cloneTree(tree), numericValue, notes);
+  const nextTree = rbInsertRecursive(cloneTree(tree), numericValue, notes, insertedNodeId);
 
   if (nextTree) {
     nextTree.color = COLORS.BLACK;
   }
 
-  if (searchMeta.found) {
-    return {
-      tree: nextTree,
-      steps: recorder.steps,
-      notes,
-    };
-  }
-
-  const insertedNode = findNodeByValue(nextTree, numericValue);
-  recorder.record(`Inserted ${numericValue} and repaired Red-Black properties as needed.`, nextTree, {
+  const insertedNode = findNodeByValue(unbalancedTree, numericValue);
+  recorder.record(`Inserted ${numericValue} as a red node at its BST position before Red-Black repair.`, unbalancedTree, {
     action: "insert",
     highlights: insertedNode?.id ? [insertedNode.id] : [],
     meta: {
@@ -1903,30 +2219,56 @@ export function rbInsert(tree, value, options = {}) {
     },
   });
 
+  let repairPlaybackTree = cloneTree(unbalancedTree);
   parseRBNotes(notes).forEach((event) => {
-    const highlightIds = findNodeIdsForValues(nextTree, [event.atValue]);
     if (event.type === "rotation") {
+      const rotationValues = collectRBRotationValues(repairPlaybackTree, event);
+      const beforeHighlightIds = findNodeIdsForValues(repairPlaybackTree, rotationValues);
+      const afterRotationTree = applyRBRotationAtValue(repairPlaybackTree, event);
+      const afterHighlightIds = findNodeIdsForValues(afterRotationTree, rotationValues);
       recorder.record(
-        `Red-Black repair used a ${event.rotation} rotation at ${event.atValue}.`,
-        nextTree,
+        `Red-Black repair marks ${rotationValues.join(", ")} for a ${event.rotation} rotation at ${event.atValue}.`,
+        repairPlaybackTree,
         {
           action: "compare",
-          highlights: highlightIds,
+          highlights: beforeHighlightIds,
           meta: {
             kind: "rb-insert",
             incomingValue: numericValue,
-            pathIds: highlightIds,
-            currentNodeId: highlightIds[0] || null,
+            pathIds: beforeHighlightIds,
+            currentNodeId: beforeHighlightIds[0] || null,
             decision: `rotate-${event.rotation}`,
             rotation: event.rotation,
             rotationLabel: event.label || "repair",
+            rotationValues,
           },
         },
       );
+      recorder.record(
+        `Red-Black repair completed the ${event.rotation} rotation. The same values keep their sorted order.`,
+        afterRotationTree,
+        {
+          action: "compare",
+          highlights: afterHighlightIds,
+          meta: {
+            kind: "rb-insert",
+            incomingValue: numericValue,
+            pathIds: afterHighlightIds,
+            currentNodeId: afterHighlightIds[0] || null,
+            decision: `rotate-${event.rotation}`,
+            rotation: event.rotation,
+            rotationLabel: event.label || "repair",
+            rotationValues,
+          },
+        },
+      );
+      repairPlaybackTree = afterRotationTree;
     }
 
     if (event.type === "color-flip") {
-      recorder.record(`Red-Black repair flipped colors at ${event.atValue}.`, nextTree, {
+      const highlightIds = findNodeIdsForValues(repairPlaybackTree, [event.atValue]);
+      const afterColorFlipTree = applyRBColorFlipAtValue(repairPlaybackTree, event.atValue);
+      recorder.record(`Red-Black repair flipped colors at ${event.atValue}.`, afterColorFlipTree, {
         action: "compare",
         highlights: highlightIds,
         meta: {
@@ -1937,13 +2279,26 @@ export function rbInsert(tree, value, options = {}) {
           decision: "color-flip",
         },
       });
+      repairPlaybackTree = afterColorFlipTree;
     }
+  });
+
+  recorder.record(`Red-Black insert complete. Nodes now show their final red and black colors.`, nextTree, {
+    action: "compare",
+    highlights: [],
+    meta: {
+      kind: "rb-insert",
+      incomingValue: numericValue,
+      pathIds: [],
+      currentNodeId: null,
+      decision: "colors-restored",
+    },
   });
 
   return {
     tree: nextTree,
     steps: recorder.steps,
-    notes,
+    notes: [...placementNotes, ...notes],
   };
 }
 
@@ -2016,6 +2371,7 @@ export function rbDelete(tree, value, options = {}) {
     nextTree.color = COLORS.RED;
   }
 
+  let deletePlaybackTree = cloneTree(nextTree);
   nextTree = rbDeleteRecursive(nextTree, numericValue, notes);
 
   if (nextTree) {
@@ -2032,28 +2388,52 @@ export function rbDelete(tree, value, options = {}) {
   });
 
   parseRBNotes(notes).forEach((event) => {
-    const highlightIds = findNodeIdsForValues(nextTree, [event.atValue, event.toValue].filter((entry) => entry != null));
     if (event.type === "rotation") {
+      const rotationValues = collectRBRotationValues(deletePlaybackTree, event);
+      const beforeHighlightIds = findNodeIdsForValues(deletePlaybackTree, rotationValues);
+      const afterRotationTree = applyRBRotationAtValue(deletePlaybackTree, event);
+      const afterHighlightIds = findNodeIdsForValues(afterRotationTree, rotationValues);
       recorder.record(
-        `Red-Black delete used a ${event.rotation} rotation at ${event.atValue}.`,
-        nextTree,
+        `Red-Black delete marks ${rotationValues.join(", ")} for a ${event.rotation} rotation at ${event.atValue}.`,
+        deletePlaybackTree,
         {
           action: "compare",
-          highlights: highlightIds,
+          highlights: beforeHighlightIds,
           meta: {
             kind: "rb-delete",
             targetValue: numericValue,
-            pathIds: highlightIds,
-            currentNodeId: highlightIds[0] || null,
+            pathIds: beforeHighlightIds,
+            currentNodeId: beforeHighlightIds[0] || null,
             decision: `rotate-${event.rotation}`,
             rotation: event.rotation,
             rotationLabel: event.label || "repair",
+            rotationValues,
           },
         },
       );
+      recorder.record(
+        `Red-Black delete completed the ${event.rotation} rotation. The same values keep their sorted order.`,
+        afterRotationTree,
+        {
+          action: "compare",
+          highlights: afterHighlightIds,
+          meta: {
+            kind: "rb-delete",
+            targetValue: numericValue,
+            pathIds: afterHighlightIds,
+            currentNodeId: afterHighlightIds[0] || null,
+            decision: `rotate-${event.rotation}`,
+            rotation: event.rotation,
+            rotationLabel: event.label || "repair",
+            rotationValues,
+          },
+        },
+      );
+      deletePlaybackTree = afterRotationTree;
     }
 
     if (event.type === "color-flip") {
+      const highlightIds = findNodeIdsForValues(nextTree, [event.atValue, event.toValue].filter((entry) => entry != null));
       recorder.record(`Red-Black delete flipped colors at ${event.atValue}.`, nextTree, {
         action: "compare",
         highlights: highlightIds,
@@ -2068,6 +2448,7 @@ export function rbDelete(tree, value, options = {}) {
     }
 
     if (event.type === "move-red-left" || event.type === "move-red-right") {
+      const highlightIds = findNodeIdsForValues(nextTree, [event.atValue, event.toValue].filter((entry) => entry != null));
       recorder.record(
         `Red-Black delete ${event.type === "move-red-left" ? "moved a red link left" : "moved a red link right"} from ${event.atValue}.`,
         nextTree,
@@ -2086,6 +2467,7 @@ export function rbDelete(tree, value, options = {}) {
     }
 
     if (event.type === "successor") {
+      const highlightIds = findNodeIdsForValues(nextTree, [event.atValue, event.toValue].filter((entry) => entry != null));
       recorder.record(
         `Red-Black delete replaced ${event.fromValue} with successor ${event.toValue}.`,
         nextTree,
@@ -2103,6 +2485,18 @@ export function rbDelete(tree, value, options = {}) {
         },
       );
     }
+  });
+
+  recorder.record(`Red-Black delete complete. Nodes now show their final red and black colors.`, nextTree, {
+    action: "compare",
+    highlights: [],
+    meta: {
+      kind: "rb-delete",
+      targetValue: numericValue,
+      pathIds: [],
+      currentNodeId: null,
+      decision: "colors-restored",
+    },
   });
 
   return {
@@ -2176,10 +2570,33 @@ export function applyTreeOperation(treeType, tree, operation, options = {}) {
     const order = operation.order || "inorder";
     const playback = buildTraversalPlayback(tree, order, options);
     const traversal = playback.traversal;
+    const cleanTree = cloneTree(tree);
+    const steps = [...playback.steps];
+
+    if (options.recordSteps) {
+      steps.push({
+        id: createId(),
+        description: "Traversal complete. Showing the final tree without highlights.",
+        tree: cleanTree,
+        action: "update",
+        highlights: [],
+        traversal,
+        operation,
+        meta: {
+          kind: "tree-traverse",
+          order,
+          pathIds: [],
+          currentNodeId: null,
+          currentValue: null,
+          traversal,
+          decision: "complete",
+        },
+      });
+    }
 
     return {
-      tree: cloneTree(tree),
-      steps: playback.steps,
+      tree: cleanTree,
+      steps,
       traversal,
       notes: [`${order} traversal: ${traversal.join(" -> ") || "empty tree"}.`],
     };
@@ -2214,7 +2631,32 @@ export function applyTreeOperation(treeType, tree, operation, options = {}) {
     };
   }
 
-  return handler(tree, operation.value, options);
+  const result = handler(tree, operation.value, options);
+
+  if (options.recordSteps && ["insert", "delete"].includes(action)) {
+    result.steps = [
+      ...(result.steps || []),
+      {
+        id: createId(),
+        description: "Operation complete. Showing the final tree without highlights.",
+        tree: cloneTree(result.tree),
+        action: "update",
+        highlights: [],
+        traversal: [],
+        operation,
+        meta: {
+          kind: `${normalizedTreeType}-${action}`,
+          incomingValue: action === "insert" ? operation.value : undefined,
+          targetValue: action === "delete" ? operation.value : undefined,
+          pathIds: [],
+          currentNodeId: null,
+          decision: "complete",
+        },
+      },
+    ];
+  }
+
+  return result;
 }
 
 export function simulateOperations({
