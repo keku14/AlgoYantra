@@ -2872,9 +2872,35 @@ export function getTreePalette() {
   };
 }
 
-export function treeToD3Data(tree) {
+function createPlaceholderD3Node(parentId, side) {
+  return {
+    name: "",
+    attributes: {
+      color: "black",
+      height: 0,
+      isEmpty: true,
+      isPlaceholder: true,
+      branchSide: side,
+      hasLeftChild: false,
+      hasRightChild: false,
+    },
+    nodeId: `placeholder-${parentId}-${side}`,
+    children: [],
+  };
+}
+
+export function treeToD3Data(tree, branchSide = null) {
   if (!tree) {
     return null;
+  }
+
+  const hasLeftChild = Boolean(tree.left);
+  const hasRightChild = Boolean(tree.right);
+  const children = [];
+
+  if (hasLeftChild || hasRightChild) {
+    children.push(hasLeftChild ? treeToD3Data(tree.left, "left") : createPlaceholderD3Node(tree.id, "left"));
+    children.push(hasRightChild ? treeToD3Data(tree.right, "right") : createPlaceholderD3Node(tree.id, "right"));
   }
 
   return {
@@ -2883,11 +2909,12 @@ export function treeToD3Data(tree) {
       color: tree.color,
       height: tree.height,
       isEmpty: !isFilledNodeValue(tree.value),
-      hasLeftChild: Boolean(tree.left),
-      hasRightChild: Boolean(tree.right),
+      branchSide,
+      hasLeftChild,
+      hasRightChild,
     },
     nodeId: tree.id,
-    children: [tree.left, tree.right].filter(Boolean).map((child) => treeToD3Data(child)),
+    children,
   };
 }
 

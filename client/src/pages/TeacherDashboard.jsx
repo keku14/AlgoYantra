@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { Activity, BarChart3, Brain, FilePenLine, FileText, Target, Trash2, Trophy, Users, X } from "lucide-react";
+import { Activity, BarChart3, Brain, FilePenLine, FilePlus2, FileText, Target, Trash2, Trophy, Users, X } from "lucide-react";
 
 import api from "../api/client.js";
 import AnalyticsCharts from "../components/AnalyticsCharts.jsx";
@@ -31,6 +31,7 @@ export default function TeacherDashboard() {
   const [editingAssignmentId, setEditingAssignmentId] = useState(null);
   const [deletingAssignmentId, setDeletingAssignmentId] = useState(null);
   const [pendingDeleteAssignmentId, setPendingDeleteAssignmentId] = useState(null);
+  const [isAssignmentEditorOpen, setIsAssignmentEditorOpen] = useState(false);
 
   async function loadDashboard() {
     try {
@@ -113,10 +114,29 @@ export default function TeacherDashboard() {
     () => filteredStudentReports,
     [filteredStudentReports],
   );
-  const selectedStudentReport = useMemo(
-    () => filteredStudentReports.find((student) => String(student.studentId) === String(selectedStudentId)) || null,
-    [filteredStudentReports, selectedStudentId],
-  );
+  const selectedStudentReport = useMemo(() => {
+    if (!selectedStudentId) {
+      return null;
+    }
+
+    const report = studentReports.find((student) => String(student.studentId) === String(selectedStudentId));
+
+    if (!report) {
+      return null;
+    }
+
+    return {
+      ...report,
+      name: report.name || "Student",
+      email: report.email || "No email available",
+      averageScore: Number.isFinite(Number(report.averageScore)) ? Number(report.averageScore) : 0,
+      attempts: Number.isFinite(Number(report.attempts)) ? Number(report.attempts) : 0,
+      marksEarned: Number.isFinite(Number(report.marksEarned)) ? Number(report.marksEarned) : 0,
+      marksPossible: Number.isFinite(Number(report.marksPossible)) ? Number(report.marksPossible) : 0,
+      treeTypeBreakdown: Array.isArray(report.treeTypeBreakdown) ? report.treeTypeBreakdown : [],
+      assignments: Array.isArray(report.assignments) ? report.assignments : [],
+    };
+  }, [studentReports, selectedStudentId]);
 
   useEffect(() => {
     if (!filteredStudentReports.length) {
@@ -124,14 +144,14 @@ export default function TeacherDashboard() {
       return;
     }
 
-    const stillExists = filteredStudentReports.some(
+    const stillExists = studentReports.some(
       (student) => String(student.studentId) === String(selectedStudentId),
     );
 
     if (!stillExists) {
       setSelectedStudentId(null);
     }
-  }, [filteredStudentReports, selectedStudentId]);
+  }, [studentReports, selectedStudentId]);
 
   function formatTreeTypeLabel(treeType) {
     return String(treeType || "")
@@ -150,6 +170,7 @@ export default function TeacherDashboard() {
       }
       if (editingAssignmentId === assignmentId) {
         setEditingAssignmentId(null);
+        setIsAssignmentEditorOpen(false);
       }
       setPendingDeleteAssignmentId(null);
       await loadDashboard();
@@ -220,16 +241,38 @@ export default function TeacherDashboard() {
 
       {!loading && activeTab === "assignments" ? (
         <div className="space-y-6">
-          <AssignmentEditor
-            assignment={editingAssignment}
-            onSaved={async () => {
-              setEditingAssignmentId(null);
-              await loadDashboard();
-            }}
-            onCancel={() => setEditingAssignmentId(null)}
-          />
+          {isAssignmentEditorOpen ? (
+            <AssignmentEditor
+              assignment={editingAssignment}
+              onSaved={async () => {
+                setEditingAssignmentId(null);
+                setIsAssignmentEditorOpen(false);
+                await loadDashboard();
+              }}
+              onCancel={() => {
+                setEditingAssignmentId(null);
+                setIsAssignmentEditorOpen(false);
+              }}
+            />
+          ) : null}
 
-          <SectionCard title="Published assignments" eyebrow="Your assignment list">
+          <SectionCard
+            title="Published assignments"
+            eyebrow="Your assignment list"
+            actions={!isAssignmentEditorOpen ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingAssignmentId(null);
+                  setIsAssignmentEditorOpen(true);
+                }}
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-4 py-2 text-sm font-semibold text-slate-950"
+              >
+                <FilePlus2 size={16} />
+                New assignment
+              </button>
+            ) : null}
+          >
             <div className="grid gap-4 xl:grid-cols-2">
               {assignments.length ? assignments.map((assignment) => (
                 <div
@@ -255,7 +298,10 @@ export default function TeacherDashboard() {
                   <div className="mt-5 flex flex-wrap gap-3">
                     <button
                       type="button"
-                      onClick={() => setEditingAssignmentId(assignment._id)}
+                      onClick={() => {
+                        setEditingAssignmentId(assignment._id);
+                        setIsAssignmentEditorOpen(true);
+                      }}
                       className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20 light:text-cyan-700"
                     >
                       <FilePenLine size={16} />
@@ -551,30 +597,6 @@ export default function TeacherDashboard() {
                             No tree progress yet.
                           </div>
                         )}
-                      </div>
-                    </div>
-
-                    <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-5 light:border-slate-200 light:bg-white">
-                      <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
-                        Overall report summary
-                      </p>
-                      <div className="mt-4 grid gap-4 md:grid-cols-2">
-                        <div className="rounded-[1.25rem] border border-white/10 bg-slate-950/25 p-4 light:border-slate-200 light:bg-slate-50">
-                          <p className="text-sm font-semibold text-white light:text-slate-900">
-                            Performance snapshot
-                          </p>
-                          <p className="mt-2 text-sm leading-7 text-slate-300 light:text-slate-700">
-                            {selectedStudentReport.name} has completed {selectedStudentReport.attempts} assignment{selectedStudentReport.attempts === 1 ? "" : "s"} and currently holds an overall score of {selectedStudentReport.averageScore}%.
-                          </p>
-                        </div>
-                        <div className="rounded-[1.25rem] border border-white/10 bg-slate-950/25 p-4 light:border-slate-200 light:bg-slate-50">
-                          <p className="text-sm font-semibold text-white light:text-slate-900">
-                            Marks summary
-                          </p>
-                          <p className="mt-2 text-sm leading-7 text-slate-300 light:text-slate-700">
-                            Total marks earned are {selectedStudentReport.marksEarned} out of {selectedStudentReport.marksPossible}, across {selectedStudentReport.treeTypeBreakdown.length} tracked tree concept{selectedStudentReport.treeTypeBreakdown.length === 1 ? "" : "s"}.
-                          </p>
-                        </div>
                       </div>
                     </div>
                   </div>

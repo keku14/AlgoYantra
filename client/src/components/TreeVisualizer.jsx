@@ -116,6 +116,14 @@ function getComparisonStatus(comparisonState) {
   }
 }
 
+function createTreeLinkPath(linkDatum) {
+  const sourceX = linkDatum.source.x;
+  const sourceY = linkDatum.source.y + 26;
+  const targetX = linkDatum.target.x;
+  const targetY = linkDatum.target.y - 26;
+  return `M${sourceX},${sourceY} L${targetX},${targetY}`;
+}
+
 export default function TreeVisualizer({
   tree,
   highlights = [],
@@ -264,7 +272,13 @@ export default function TreeVisualizer({
         <Tree
           key={treeLayoutKey}
           data={d3Data}
-          pathFunc="elbow"
+          pathFunc={(linkDatum) => {
+            if (linkDatum.target.data.attributes?.isPlaceholder) {
+              return "";
+            }
+
+            return createTreeLinkPath(linkDatum);
+          }}
           translate={{ x: dimensions.width / 2, y: translateY }}
           zoom={zoom}
           transitionDuration={450}
@@ -272,6 +286,10 @@ export default function TreeVisualizer({
           separation={compact ? { siblings: 1.05, nonSiblings: 1.2 } : { siblings: 1.3, nonSiblings: 1.6 }}
           zoomable
           pathClassFunc={(linkDatum) => {
+            if (linkDatum.target.data.attributes?.isPlaceholder) {
+              return "tree-link-hidden";
+            }
+
             const targetNodeId = linkDatum.target.data.nodeId;
 
             if (comparedPathIds.includes(targetNodeId)) {
@@ -288,13 +306,11 @@ export default function TreeVisualizer({
 
             return "tree-link-default";
           }}
-          styles={{
-            links: {
-              stroke: "#64748b",
-              strokeWidth: 2,
-            },
-          }}
           renderCustomNodeElement={({ nodeDatum }) => {
+            if (nodeDatum.attributes?.isPlaceholder) {
+              return <g aria-hidden="true" />;
+            }
+
             const isHighlighted = highlights.includes(nodeDatum.nodeId);
             const isRedNode = nodeDatum.attributes?.color === "red";
             const isEmpty = nodeDatum.attributes?.isEmpty;

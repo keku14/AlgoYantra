@@ -37,26 +37,30 @@ function formatDateValue(dateValue) {
   return new Date(dateValue).toISOString().slice(0, 10);
 }
 
+function getInitialForm(assignment) {
+  if (!assignment) {
+    return defaultForm;
+  }
+
+  return {
+    title: assignment.title || "",
+    description: assignment.description || "",
+    treeType: assignment.treeType || "bst",
+    xpReward: Number(assignment.xpReward || 100),
+    dueDate: formatDateValue(assignment.dueDate),
+    promptValues: Array.isArray(assignment.promptValues) ? assignment.promptValues.join(", ") : "",
+  };
+}
+
 export default function AssignmentEditor({ assignment = null, onSaved, onCancel }) {
-  const [form, setForm] = useState(defaultForm);
+  const [form, setForm] = useState(() => getInitialForm(assignment));
   const [saving, setSaving] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const initialForm = useMemo(() => getInitialForm(assignment), [assignment]);
 
   useEffect(() => {
-    if (!assignment) {
-      setForm(defaultForm);
-      return;
-    }
-
-    setForm({
-      title: assignment.title || "",
-      description: assignment.description || "",
-      treeType: assignment.treeType || "bst",
-      xpReward: Number(assignment.xpReward || 100),
-      dueDate: formatDateValue(assignment.dueDate),
-      promptValues: Array.isArray(assignment.promptValues) ? assignment.promptValues.join(", ") : "",
-    });
-  }, [assignment]);
+    setForm(initialForm);
+  }, [initialForm]);
 
   function updateField(name, value) {
     setForm((current) => ({
@@ -111,13 +115,14 @@ export default function AssignmentEditor({ assignment = null, onSaved, onCancel 
     <SectionCard
       title={assignment ? "Edit assignment" : "Assignment editor"}
       eyebrow="Teacher tooling"
-      actions={assignment ? (
+      actions={onCancel ? (
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-slate-200 light:border-slate-200 light:text-slate-700"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10 light:border-slate-200 light:bg-white light:text-slate-700"
+          aria-label="Close assignment editor"
         >
-          Cancel edit
+          <X size={18} />
         </button>
       ) : null}
     >
@@ -159,7 +164,7 @@ export default function AssignmentEditor({ assignment = null, onSaved, onCancel 
           </label>
 
           <label className="block space-y-2">
-            <span className="text-sm text-slate-300 light:text-slate-700">Vector of integers</span>
+            <span className="text-sm text-slate-300 light:text-slate-700">Node Values</span>
             <textarea
               value={form.promptValues}
               onChange={(event) => updateField("promptValues", event.target.value)}
@@ -190,13 +195,26 @@ export default function AssignmentEditor({ assignment = null, onSaved, onCancel 
             </label>
           </div>
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 font-semibold text-slate-950"
-          >
-            {saving ? (assignment ? "Saving..." : "Publishing...") : (assignment ? "Save changes" : "Publish assignment")}
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 font-semibold text-slate-950"
+            >
+              {saving ? (assignment ? "Saving..." : "Publishing...") : (assignment ? "Save changes" : "Publish assignment")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setForm(initialForm);
+                setIsPreviewOpen(false);
+              }}
+              disabled={saving}
+              className="rounded-full border border-white/10 px-5 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/5 disabled:opacity-60 light:border-slate-200 light:text-slate-700"
+            >
+              Reset
+            </button>
+          </div>
         </form>
 
         <div className="space-y-4">
