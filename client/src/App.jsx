@@ -12,7 +12,7 @@ function HomeRedirect() {
   const { user } = useAuth();
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <AuthPage />;
   }
 
   return <Navigate to={user.role === "teacher" ? "/teacher" : "/student"} replace />;
