@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Tree from "react-d3-tree";
 
 import { countNodes, treeHeight, treeToD3Data } from "@algoyantra/shared";
+import { useTheme } from "../context/ThemeContext.jsx";
 
 function getComparisonTheme(comparisonState) {
   if (!comparisonState) {
@@ -139,6 +140,7 @@ export default function TreeVisualizer({
   compact = false,
   showStats = true,
 }) {
+  const { isDark } = useTheme();
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({
     width: 700,
@@ -375,15 +377,15 @@ export default function TreeVisualizer({
                       ? "COMPARE"
                       : "";
             const actionLabelFill = isInserted
-              ? "#a5f3fc"
+              ? isDark ? "#a5f3fc" : "#0f766e"
               : isTraversalNode
-                ? "#ddd6fe"
+                ? isDark ? "#ddd6fe" : "#5b21b6"
                 : isRotationNode
-                  ? "#fbcfe8"
+                  ? isDark ? "#fbcfe8" : "#be185d"
                   : isColorFixNode
-                    ? "#ccfbf1"
+                    ? isDark ? "#ccfbf1" : "#0f766e"
                     : isCurrentCompared
-                      ? "#fed7aa"
+                      ? isDark ? "#fed7aa" : "#b45309"
                       : "#e2e8f0";
 
             return (

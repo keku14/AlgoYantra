@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { Activity, BarChart3, Brain, FilePenLine, FilePlus2, FileText, GitBranch, Target, Trash2, Trophy, Users, X } from "lucide-react";
+import { Activity, BarChart3, Brain, FilePenLine, FilePlus2, GitBranch, Target, Trash2, Trophy, Users, X } from "lucide-react";
 
 import api from "../api/client.js";
 import AnalyticsCharts from "../components/AnalyticsCharts.jsx";
@@ -16,7 +16,7 @@ const tabs = [
   { id: "studio", label: "Teach Trees", icon: GitBranch },
   { id: "assignments", label: "Assignments", icon: Brain },
   { id: "analytics", label: "Analytics", icon: Activity },
-  { id: "student-report", label: "Student Report", icon: FileText },
+  { id: "student-performance", label: "Student Performance", icon: BarChart3 },
 ];
 
 export default function TeacherDashboard() {
@@ -138,7 +138,6 @@ export default function TeacherDashboard() {
       assignments: Array.isArray(report.assignments) ? report.assignments : [],
     };
   }, [studentReports, selectedStudentId]);
-
   useEffect(() => {
     if (!filteredStudentReports.length) {
       setSelectedStudentId(null);
@@ -149,7 +148,7 @@ export default function TeacherDashboard() {
       (student) => String(student.studentId) === String(selectedStudentId),
     );
 
-    if (!stillExists) {
+    if (selectedStudentId && !stillExists) {
       setSelectedStudentId(null);
     }
   }, [studentReports, selectedStudentId]);
@@ -182,10 +181,10 @@ export default function TeacherDashboard() {
     }
   }
 
-  const studentReportCardSection = (
+  const studentPerformanceSection = (
     <SectionCard
       title="Student performance"
-      eyebrow="Class overview"
+      eyebrow="Individual learner insights"
       actions={selectedStudentReport ? (
         <button
           type="button"
@@ -238,7 +237,7 @@ export default function TeacherDashboard() {
                           {student.averageScore}%
                         </div>
                         <p className="text-sm text-slate-400 light:text-slate-600">
-                          {student.marksEarned}/{student.marksPossible} Marks
+                          {student.attempts} attempt{student.attempts === 1 ? "" : "s"}
                         </p>
                       </div>
                     </div>
@@ -258,7 +257,7 @@ export default function TeacherDashboard() {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">
-                      Student report card
+                      Student performance overview
                     </p>
                     <h3 className="mt-2 font-display text-2xl font-semibold text-white light:text-slate-900">
                       {selectedStudentReport.name}
@@ -278,7 +277,7 @@ export default function TeacherDashboard() {
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
                   <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Assignments attempted</p>
                   <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
@@ -289,15 +288,6 @@ export default function TeacherDashboard() {
                   <p className="text-xs uppercase tracking-[0.24em] text-slate-400 light:text-slate-600">Overall score</p>
                   <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
                     {selectedStudentReport.averageScore}%
-                  </div>
-                </div>
-                <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
-                  <div className="flex items-center gap-2 text-slate-400 light:text-slate-600">
-                    <BarChart3 size={16} />
-                    <p className="text-xs uppercase tracking-[0.24em]">Tree-wise progress</p>
-                  </div>
-                  <div className="mt-2 font-display text-3xl font-bold text-white light:text-slate-900">
-                    {selectedStudentReport.treeTypeBreakdown.length}
                   </div>
                 </div>
                 <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
@@ -347,13 +337,13 @@ export default function TeacherDashboard() {
             </div>
           ) : (
             <div className="rounded-[1.75rem] border border-dashed border-white/15 p-6 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
-              Select a student to view the report card.
+              Select a student to view performance details.
             </div>
           )}
         </div>
       ) : (
         <div className="rounded-[1.5rem] border border-dashed border-white/15 p-6 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
-          Student analytics will appear after submissions come in.
+          No student performance data is available yet.
         </div>
       )}
     </SectionCard>
@@ -618,9 +608,9 @@ export default function TeacherDashboard() {
         </div>
       ) : null}
 
-      {!loading && activeTab === "student-report" ? (
+      {!loading && activeTab === "student-performance" ? (
         <div className="space-y-6">
-          {studentReportCardSection}
+          {studentPerformanceSection}
         </div>
       ) : null}
     </AppShell>

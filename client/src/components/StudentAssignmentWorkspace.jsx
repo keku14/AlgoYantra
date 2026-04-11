@@ -61,7 +61,7 @@ export default function StudentAssignmentWorkspace({
     }
 
     onTreeChange(setNodeValue(tree, nodeId, nextValue));
-    setSelectedNodeId(nodeId);
+    setSelectedNodeId(null);
   }
 
   function handleRemoveNode(nodeId = selectedNodeId) {
