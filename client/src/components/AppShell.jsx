@@ -13,6 +13,7 @@ export default function AppShell({
   activeTab,
   onTabChange,
   actions,
+  topActions,
   hideHeader = false,
   children,
 }) {
@@ -39,6 +40,7 @@ export default function AppShell({
         <div className="flex items-start justify-between gap-4">
           <SiteBrand />
           <div className="flex items-center gap-3">
+            {topActions}
             <ThemeToggle />
 
             <div ref={menuRef} className="relative">

@@ -26,6 +26,11 @@ const userSchema = new mongoose.Schema(
       enum: ["teacher", "student"],
       required: true,
     },
+    activeClassroom: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Classroom",
+      default: null,
+    },
     xp: {
       type: Number,
       default: 0,

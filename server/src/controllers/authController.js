@@ -1,6 +1,7 @@
 import Performance from "../models/Performance.js";
 import User from "../models/User.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { serializeClassroom, syncActiveClassroom } from "../utils/classroom.js";
 import { generateToken } from "../utils/token.js";
 
 function sanitizeUser(user) {
@@ -76,6 +77,10 @@ export const login = asyncHandler(async (req, res) => {
     throw error;
   }
 
+  if (user.role === "teacher") {
+    user.activeClassroom = null;
+  }
+
   user.lastActiveAt = new Date();
   await user.save();
 
@@ -86,6 +91,7 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 export const getMe = asyncHandler(async (req, res) => {
+  const { classrooms, activeClassroom } = await syncActiveClassroom(req.user);
   const performance =
     req.user.role === "student"
       ? await Performance.findOne({ student: req.user._id })
@@ -94,5 +100,7 @@ export const getMe = asyncHandler(async (req, res) => {
   res.status(200).json({
     user: req.user,
     performance,
+    classrooms: classrooms.map(serializeClassroom),
+    activeClassroom: serializeClassroom(activeClassroom),
   });
 });

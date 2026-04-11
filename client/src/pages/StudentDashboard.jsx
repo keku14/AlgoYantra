@@ -10,6 +10,7 @@ import {
   LineChart,
   PanelLeftClose,
   PanelLeftOpen,
+  School,
   Target,
   Trophy,
   X,
@@ -19,6 +20,8 @@ import { collectValues, countNodes, treeHeight, traverseTree } from "@algoyantra
 import api from "../api/client.js";
 import AnalyticsCharts from "../components/AnalyticsCharts.jsx";
 import AppShell from "../components/AppShell.jsx";
+import ClassroomHub from "../components/ClassroomHub.jsx";
+import ClassroomSwitcher from "../components/ClassroomSwitcher.jsx";
 import SectionCard from "../components/SectionCard.jsx";
 import SkeletonCard from "../components/SkeletonCard.jsx";
 import StatCard from "../components/StatCard.jsx";
@@ -28,14 +31,25 @@ import { useAuth } from "../context/AuthContext.jsx";
 import useHistoryState from "../hooks/useHistoryState.js";
 
 const tabs = [
+  { id: "classrooms", label: "Classrooms", icon: School },
   { id: "assignments", label: "Assignments", icon: GraduationCap },
   { id: "analytics", label: "Analytics", icon: LineChart },
 ];
+const TAB_STORAGE_KEY = "algoyantra_student_active_tab";
 
 export default function StudentDashboard() {
-  const { user, refreshProfile } = useAuth();
-  const [activeTab, setActiveTab] = useState("assignments");
+  const {
+    user,
+    refreshProfile,
+    classrooms,
+    activeClassroom,
+    joinClassroom,
+    switchClassroom,
+  } = useAuth();
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem(TAB_STORAGE_KEY) || "assignments");
   const [loading, setLoading] = useState(true);
+  const [joiningClassroom, setJoiningClassroom] = useState(false);
+  const [switchingClassroom, setSwitchingClassroom] = useState(false);
   const [assignments, setAssignments] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [analytics, setAnalytics] = useState(null);
@@ -48,8 +62,17 @@ export default function StudentDashboard() {
   const [selectedAnalyticsAssignmentId, setSelectedAnalyticsAssignmentId] = useState(null);
   const [analyticsTreePreview, setAnalyticsTreePreview] = useState(null);
   const solverHistory = useHistoryState(null);
+  const hasActiveClassroom = Boolean(activeClassroom?._id);
 
   async function loadDashboard() {
+    if (!hasActiveClassroom) {
+      setAssignments([]);
+      setAnalytics(null);
+      setSubmissions([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const [assignmentsResponse, analyticsResponse, submissionsResponse] = await Promise.all([
@@ -62,15 +85,26 @@ export default function StudentDashboard() {
       setAnalytics(analyticsResponse.data);
       setSubmissions(submissionsResponse.data.submissions);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to load student dashboard.");
+      if (error.response?.data?.code !== "ACTIVE_CLASSROOM_REQUIRED") {
+        toast.error(error.response?.data?.message || "Failed to load student dashboard.");
+      }
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
+    if (!hasActiveClassroom) {
+      setActiveTab("classrooms");
+      return;
+    }
+
     loadDashboard();
-  }, []);
+  }, [activeClassroom?._id]);
+
+  useEffect(() => {
+    localStorage.setItem(TAB_STORAGE_KEY, activeTab);
+  }, [activeTab]);
 
   const selectedAssignment =
     assignments.find((assignment) => assignment._id === selectedAssignmentId) || null;
@@ -99,6 +133,14 @@ export default function StudentDashboard() {
     }
   }, [assignmentFilter]);
 
+  useEffect(() => {
+    setSelectedAssignmentId(null);
+    setSelectedAnalyticsTreeType(null);
+    setSelectedAnalyticsAssignmentId(null);
+    setIsAssignmentRailOpen(true);
+    setAssignmentFilter("pending");
+  }, [activeClassroom?._id]);
+
   async function submitAssignment() {
     if (!selectedAssignment) {
       return;
@@ -121,6 +163,37 @@ export default function StudentDashboard() {
       toast.error(error.response?.data?.message || "Failed to submit assignment.");
     } finally {
       setSubmittingAssignment(false);
+    }
+  }
+
+  async function handleJoinClassroom(payload) {
+    try {
+      setJoiningClassroom(true);
+      await joinClassroom(payload);
+      toast.success("Joined classroom.");
+      setActiveTab("classrooms");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to join classroom.");
+    } finally {
+      setJoiningClassroom(false);
+    }
+  }
+
+  async function handleSwitchClassroom(classroomId) {
+    if (!classroomId || classroomId === activeClassroom?._id) {
+      setActiveTab("classrooms");
+      return;
+    }
+
+    try {
+      setSwitchingClassroom(true);
+      await switchClassroom(classroomId);
+      toast.success("Active classroom updated.");
+      setActiveTab("classrooms");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to switch classroom.");
+    } finally {
+      setSwitchingClassroom(false);
     }
   }
 
@@ -279,6 +352,14 @@ export default function StudentDashboard() {
     setIsAssignmentRailOpen(true);
   }
 
+  const noClassroomState = (
+    <SectionCard title="No classroom selected" eyebrow="Join the right cohort first">
+      <div className="rounded-[1.5rem] border border-dashed border-white/15 p-6 text-sm leading-7 text-slate-400 light:border-slate-300 light:text-slate-600">
+        Join a classroom with your professor&apos;s code. Once a classroom is active, your assignments, submissions, and analytics stay inside that class instead of mixing with students from other sections or colleges.
+      </div>
+    </SectionCard>
+  );
+
   return (
     <AppShell
       title="Student dashboard"
@@ -287,6 +368,11 @@ export default function StudentDashboard() {
       tabs={tabs}
       activeTab={activeTab}
       onTabChange={setActiveTab}
+      topActions={(
+        <ClassroomSwitcher
+          activeClassroom={activeClassroom}
+        />
+      )}
       hideHeader
     >
       {loading ? (
@@ -297,8 +383,21 @@ export default function StudentDashboard() {
         </div>
       ) : null}
 
+      {!loading && activeTab === "classrooms" ? (
+        <ClassroomHub
+          role="student"
+          classrooms={classrooms}
+          activeClassroom={activeClassroom}
+          onSwitchClassroom={handleSwitchClassroom}
+          onJoinClassroom={handleJoinClassroom}
+          switchingClassroom={switchingClassroom}
+          mutatingClassroom={joiningClassroom}
+        />
+      ) : null}
+
       {!loading && activeTab === "assignments" ? (
-        <div className="space-y-6">
+        hasActiveClassroom ? (
+          <div className="space-y-6">
           {isAssignmentRailOpen ? (
             <SectionCard
               title="Assigned work"
@@ -413,11 +512,13 @@ export default function StudentDashboard() {
               submitting={submittingAssignment}
             />
           ) : null}
-        </div>
+          </div>
+        ) : noClassroomState
       ) : null}
 
       {!loading && activeTab === "analytics" ? (
-        <div className="space-y-6">
+        hasActiveClassroom ? (
+          <div className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
             <StatCard icon={Target} label="Accuracy" value={`${overview.accuracy}%`} helper="Overall assignment accuracy" tone="cyan" />
             <StatCard
@@ -743,7 +844,8 @@ export default function StudentDashboard() {
               </div>
             </SectionCard>
           ) : null}
-        </div>
+          </div>
+        ) : noClassroomState
       ) : null}
 
       {analyticsTreePreview ? (

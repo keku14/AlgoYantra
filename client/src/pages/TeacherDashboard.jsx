@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { Activity, BarChart3, Brain, FilePenLine, FilePlus2, GitBranch, Target, Trash2, Trophy, Users, X } from "lucide-react";
+import { Activity, Brain, FilePenLine, FilePlus2, GitBranch, School, Target, Trash2, Trophy, Users, X } from "lucide-react";
 
 import api from "../api/client.js";
 import AnalyticsCharts from "../components/AnalyticsCharts.jsx";
 import AppShell from "../components/AppShell.jsx";
 import AssignmentEditor from "../components/AssignmentEditor.jsx";
+import ClassroomHub from "../components/ClassroomHub.jsx";
+import ClassroomSwitcher from "../components/ClassroomSwitcher.jsx";
 import SectionCard from "../components/SectionCard.jsx";
 import SkeletonCard from "../components/SkeletonCard.jsx";
 import StatCard from "../components/StatCard.jsx";
@@ -13,16 +15,29 @@ import TeacherTreeStudio from "../components/TeacherTreeStudio.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const tabs = [
+  { id: "classrooms", label: "Classrooms", icon: School },
   { id: "studio", label: "Teach Trees", icon: GitBranch },
   { id: "assignments", label: "Assignments", icon: Brain },
   { id: "analytics", label: "Analytics", icon: Activity },
-  { id: "student-performance", label: "Student Performance", icon: BarChart3 },
 ];
+const TAB_STORAGE_KEY = "algoyantra_teacher_active_tab";
+const DEFAULT_TEACHER_TAB = "classrooms";
 
 export default function TeacherDashboard() {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("studio");
+  const {
+    user,
+    classrooms,
+    activeClassroom,
+    clearActiveClassroom,
+    createClassroom,
+    deleteClassroom,
+    switchClassroom,
+    updateClassroom,
+  } = useAuth();
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem(TAB_STORAGE_KEY) || DEFAULT_TEACHER_TAB);
   const [loading, setLoading] = useState(true);
+  const [creatingClassroom, setCreatingClassroom] = useState(false);
+  const [switchingClassroom, setSwitchingClassroom] = useState(false);
   const [assignments, setAssignments] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(null);
@@ -33,8 +48,17 @@ export default function TeacherDashboard() {
   const [deletingAssignmentId, setDeletingAssignmentId] = useState(null);
   const [pendingDeleteAssignmentId, setPendingDeleteAssignmentId] = useState(null);
   const [isAssignmentEditorOpen, setIsAssignmentEditorOpen] = useState(false);
+  const hasActiveClassroom = Boolean(activeClassroom?._id);
 
   async function loadDashboard() {
+    if (!hasActiveClassroom) {
+      setAssignments([]);
+      setAnalytics(null);
+      setAssignmentSubmissions([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const [assignmentsResponse, analyticsResponse] = await Promise.all([
@@ -45,19 +69,36 @@ export default function TeacherDashboard() {
       setAssignments(assignmentsResponse.data.assignments);
       setAnalytics(analyticsResponse.data);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to load teacher dashboard.");
+      if (error.response?.data?.code !== "ACTIVE_CLASSROOM_REQUIRED") {
+        toast.error(error.response?.data?.message || "Failed to load teacher dashboard.");
+      }
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
+    if (activeTab !== "classrooms" && !activeClassroom?._id) {
+      setActiveTab("classrooms");
+      return;
+    }
+
+    if (!hasActiveClassroom) {
+      setLoading(false);
+      setActiveTab("classrooms");
+      return;
+    }
+
     loadDashboard();
-  }, []);
+  }, [activeClassroom?._id, activeTab, hasActiveClassroom]);
+
+  useEffect(() => {
+    localStorage.setItem(TAB_STORAGE_KEY, activeTab);
+  }, [activeTab]);
 
   useEffect(() => {
     async function loadAssignmentSubmissions() {
-      if (!selectedAssignmentId) {
+      if (!selectedAssignmentId || !hasActiveClassroom) {
         setAssignmentSubmissions([]);
         return;
       }
@@ -71,7 +112,15 @@ export default function TeacherDashboard() {
     }
 
     loadAssignmentSubmissions();
-  }, [selectedAssignmentId]);
+  }, [selectedAssignmentId, activeClassroom?._id]);
+
+  useEffect(() => {
+    setSelectedAssignmentId(null);
+    setSelectedStudentId(null);
+    setEditingAssignmentId(null);
+    setPendingDeleteAssignmentId(null);
+    setIsAssignmentEditorOpen(false);
+  }, [activeClassroom?._id]);
 
   const overview = analytics?.overview || {
     totalStudents: 0,
@@ -180,6 +229,105 @@ export default function TeacherDashboard() {
       setDeletingAssignmentId(null);
     }
   }
+
+  async function handleCreateClassroom(payload) {
+    try {
+      setCreatingClassroom(true);
+      await createClassroom(payload);
+      toast.success("Classroom created.");
+      setActiveTab("classrooms");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to create classroom.");
+    } finally {
+      setCreatingClassroom(false);
+    }
+  }
+
+  async function handleUpdateClassroom(classroomId, payload) {
+    try {
+      setCreatingClassroom(true);
+      await updateClassroom(classroomId, payload);
+      toast.success("Classroom updated.");
+      setActiveTab("classrooms");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update classroom.");
+    } finally {
+      setCreatingClassroom(false);
+    }
+  }
+
+  async function handleDeleteClassroom(classroom) {
+    try {
+      setCreatingClassroom(true);
+      await deleteClassroom(classroom._id);
+      toast.success("Classroom deleted.");
+      setActiveTab("classrooms");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete classroom.");
+    } finally {
+      setCreatingClassroom(false);
+    }
+  }
+
+  async function handleSwitchClassroom(classroomId) {
+    if (!classroomId || classroomId === activeClassroom?._id) {
+      setActiveTab("classrooms");
+      return;
+    }
+
+    try {
+      setSwitchingClassroom(true);
+      await switchClassroom(classroomId);
+      toast.success("Active classroom updated.");
+      setActiveTab("classrooms");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to switch classroom.");
+    } finally {
+      setSwitchingClassroom(false);
+    }
+  }
+
+  async function handleClearActiveClassroom() {
+    try {
+      setSwitchingClassroom(true);
+      await clearActiveClassroom();
+      setActiveTab("classrooms");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to clear active classroom.");
+    } finally {
+      setSwitchingClassroom(false);
+    }
+  }
+
+  async function handleLoadTeacherRoster(classroomId) {
+    const { data } = await api.get(`/classrooms/${classroomId}/roster`);
+    const rosterByStudentId = new Map(
+      (analytics?.studentReports || []).map((student) => [String(student.studentId), student]),
+    );
+
+    return {
+      classroom: data.classroom,
+      students: (data.students || []).map((student) => {
+        const report = rosterByStudentId.get(String(student._id));
+
+        return {
+          _id: student._id,
+          name: student.name,
+          email: student.email,
+          averageScore: report?.averageScore || 0,
+          attempts: report?.attempts || 0,
+        };
+      }),
+    };
+  }
+
+  const noClassroomState = (
+    <SectionCard title="No classroom selected" eyebrow="Create your first class space">
+      <div className="rounded-[1.5rem] border border-dashed border-white/15 p-6 text-sm leading-7 text-slate-400 light:border-slate-300 light:text-slate-600">
+        Create a classroom first. Once a classroom is active, assignments, submissions, and analytics will stay isolated to that class so students from other colleges or sections do not mix.
+      </div>
+    </SectionCard>
+  );
 
   const studentPerformanceSection = (
     <SectionCard
@@ -357,6 +505,11 @@ export default function TeacherDashboard() {
       tabs={tabs}
       activeTab={activeTab}
       onTabChange={setActiveTab}
+      topActions={(
+        <ClassroomSwitcher
+          activeClassroom={activeClassroom}
+        />
+      )}
       hideHeader
     >
       {pendingDeleteAssignment ? (
@@ -407,8 +560,25 @@ export default function TeacherDashboard() {
         </div>
       ) : null}
 
+      {!loading && activeTab === "classrooms" ? (
+        <ClassroomHub
+          role="teacher"
+          classrooms={classrooms}
+          activeClassroom={activeClassroom}
+          onSwitchClassroom={handleSwitchClassroom}
+          onClearActiveClassroom={handleClearActiveClassroom}
+          onCreateClassroom={handleCreateClassroom}
+          onLoadTeacherRoster={handleLoadTeacherRoster}
+          onUpdateClassroom={handleUpdateClassroom}
+          onDeleteClassroom={handleDeleteClassroom}
+          switchingClassroom={switchingClassroom}
+          mutatingClassroom={creatingClassroom}
+        />
+      ) : null}
+
       {!loading && activeTab === "assignments" ? (
-        <div className="space-y-6">
+        hasActiveClassroom ? (
+          <div className="space-y-6">
           {isAssignmentEditorOpen ? (
             <AssignmentEditor
               assignment={editingAssignment}
@@ -493,15 +663,17 @@ export default function TeacherDashboard() {
               )}
             </div>
           </SectionCard>
-        </div>
+          </div>
+        ) : noClassroomState
       ) : null}
 
       {!loading && activeTab === "studio" ? (
-        <TeacherTreeStudio />
+        hasActiveClassroom ? <TeacherTreeStudio /> : noClassroomState
       ) : null}
 
       {!loading && activeTab === "analytics" ? (
-        <div className="space-y-6">
+        hasActiveClassroom ? (
+          <div className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard icon={Users} label="Students" value={overview.totalStudents} helper="Students in the workspace" tone="cyan" />
             <StatCard icon={Brain} label="Assignments" value={overview.activeAssignments} helper="Assignments created by you" tone="emerald" />
@@ -605,13 +777,16 @@ export default function TeacherDashboard() {
             mistakeHeatmap={analytics?.mistakeHeatmap || []}
             treeTypePerformance={analytics?.treeTypePerformance || []}
           />
-        </div>
+          </div>
+        ) : noClassroomState
       ) : null}
 
       {!loading && activeTab === "student-performance" ? (
-        <div className="space-y-6">
-          {studentPerformanceSection}
-        </div>
+        hasActiveClassroom ? (
+          <div className="space-y-6">
+            {studentPerformanceSection}
+          </div>
+        ) : noClassroomState
       ) : null}
     </AppShell>
   );

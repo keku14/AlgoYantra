@@ -8,6 +8,8 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem("algoyantra_token"));
   const [user, setUser] = useState(null);
   const [performance, setPerformance] = useState(null);
+  const [classrooms, setClassrooms] = useState([]);
+  const [activeClassroom, setActiveClassroom] = useState(null);
   const [loading, setLoading] = useState(Boolean(localStorage.getItem("algoyantra_token")));
 
   async function fetchProfile() {
@@ -25,11 +27,15 @@ export function AuthProvider({ children }) {
       const { data } = await api.get("/auth/me");
       setUser(data.user);
       setPerformance(data.performance || null);
+      setClassrooms(data.classrooms || []);
+      setActiveClassroom(data.activeClassroom || null);
     } catch (error) {
       localStorage.removeItem("algoyantra_token");
       setToken(null);
       setUser(null);
       setPerformance(null);
+      setClassrooms([]);
+      setActiveClassroom(null);
     } finally {
       setLoading(false);
     }
@@ -58,6 +64,44 @@ export function AuthProvider({ children }) {
     setToken(null);
     setUser(null);
     setPerformance(null);
+    setClassrooms([]);
+    setActiveClassroom(null);
+  }
+
+  async function createClassroom(payload) {
+    const { data } = await api.post("/classrooms", payload);
+    await fetchProfile();
+    return data;
+  }
+
+  async function joinClassroom(payload) {
+    const { data } = await api.post("/classrooms/join", payload);
+    await fetchProfile();
+    return data;
+  }
+
+  async function switchClassroom(classroomId) {
+    const { data } = await api.patch(`/classrooms/${classroomId}/active`);
+    await fetchProfile();
+    return data.activeClassroom;
+  }
+
+  async function clearActiveClassroom() {
+    const { data } = await api.patch("/classrooms/active/clear");
+    await fetchProfile();
+    return data.activeClassroom;
+  }
+
+  async function updateClassroom(classroomId, payload) {
+    const { data } = await api.put(`/classrooms/${classroomId}`, payload);
+    await fetchProfile();
+    return data.classroom;
+  }
+
+  async function deleteClassroom(classroomId) {
+    const { data } = await api.delete(`/classrooms/${classroomId}`);
+    await fetchProfile();
+    return data;
   }
 
   return (
@@ -66,10 +110,18 @@ export function AuthProvider({ children }) {
         token,
         user,
         performance,
+        classrooms,
+        activeClassroom,
         loading,
         isAuthenticated: Boolean(user),
         login: (payload) => authenticate("login", payload),
         signup: (payload) => authenticate("signup", payload),
+        createClassroom,
+        joinClassroom,
+        switchClassroom,
+        clearActiveClassroom,
+        updateClassroom,
+        deleteClassroom,
         logout,
         refreshProfile,
       }}

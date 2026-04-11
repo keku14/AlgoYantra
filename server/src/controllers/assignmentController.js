@@ -3,6 +3,7 @@ import { simulateOperations } from "@algoyantra/shared";
 import Assignment from "../models/Assignment.js";
 import Submission from "../models/Submission.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { requireActiveClassroom } from "../utils/classroom.js";
 
 function buildPreview(assignment) {
   if (assignment.solutionTree) {
@@ -22,8 +23,12 @@ function buildPreview(assignment) {
 }
 
 export const getAssignments = asyncHandler(async (req, res) => {
-  const filters = req.user.role === "teacher" ? { teacher: req.user._id } : {};
+  const { activeClassroom } = await requireActiveClassroom(req.user);
+  const filters = req.user.role === "teacher"
+    ? { teacher: req.user._id, classroom: activeClassroom._id }
+    : { classroom: activeClassroom._id };
   const assignments = await Assignment.find(filters)
+    .populate("classroom", "name code institution section")
     .populate("teacher", "name email")
     .populate("lesson", "title type")
     .sort({ createdAt: -1 });
@@ -53,12 +58,20 @@ export const getAssignments = asyncHandler(async (req, res) => {
 });
 
 export const getAssignmentById = asyncHandler(async (req, res) => {
+  const { activeClassroom } = await requireActiveClassroom(req.user);
   const assignment = await Assignment.findById(req.params.assignmentId)
+    .populate("classroom", "name code institution section")
     .populate("teacher", "name email")
     .populate("lesson", "title type summary");
 
   if (!assignment) {
     const error = new Error("Assignment not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (String(assignment.classroom?._id || assignment.classroom) !== String(activeClassroom._id)) {
+    const error = new Error("Assignment not found in the active classroom.");
     error.statusCode = 404;
     throw error;
   }
@@ -80,18 +93,26 @@ export const getAssignmentById = asyncHandler(async (req, res) => {
 });
 
 export const createAssignment = asyncHandler(async (req, res) => {
+  const { activeClassroom } = await requireActiveClassroom(req.user);
+  const { teacher: _ignoredTeacher, classroom: _ignoredClassroom, ...assignmentPayload } = req.body;
   const assignment = await Assignment.create({
-    ...req.body,
+    ...assignmentPayload,
     teacher: req.user._id,
+    classroom: activeClassroom._id,
   });
 
+  const populatedAssignment = await Assignment.findById(assignment._id)
+    .populate("classroom", "name code institution section")
+    .populate("teacher", "name email");
+
   res.status(201).json({
-    assignment,
+    assignment: populatedAssignment,
     solutionPreview: buildPreview(assignment.toObject()),
   });
 });
 
 export const updateAssignment = asyncHandler(async (req, res) => {
+  const { activeClassroom } = await requireActiveClassroom(req.user);
   const assignment = await Assignment.findById(req.params.assignmentId);
 
   if (!assignment) {
@@ -106,16 +127,30 @@ export const updateAssignment = asyncHandler(async (req, res) => {
     throw error;
   }
 
-  Object.assign(assignment, req.body);
+  if (String(assignment.classroom) !== String(activeClassroom._id)) {
+    const error = new Error("You can only update assignments in your active classroom.");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const { teacher: _ignoredTeacher, classroom: _ignoredClassroom, ...assignmentPayload } = req.body;
+
+  Object.assign(assignment, assignmentPayload);
+  assignment.classroom = activeClassroom._id;
   await assignment.save();
 
+  const populatedAssignment = await Assignment.findById(assignment._id)
+    .populate("classroom", "name code institution section")
+    .populate("teacher", "name email");
+
   res.status(200).json({
-    assignment,
+    assignment: populatedAssignment,
     solutionPreview: buildPreview(assignment.toObject()),
   });
 });
 
 export const deleteAssignment = asyncHandler(async (req, res) => {
+  const { activeClassroom } = await requireActiveClassroom(req.user);
   const assignment = await Assignment.findById(req.params.assignmentId);
 
   if (!assignment) {
@@ -126,6 +161,12 @@ export const deleteAssignment = asyncHandler(async (req, res) => {
 
   if (String(assignment.teacher) !== String(req.user._id)) {
     const error = new Error("You can only delete your own assignments.");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  if (String(assignment.classroom) !== String(activeClassroom._id)) {
+    const error = new Error("You can only delete assignments in your active classroom.");
     error.statusCode = 403;
     throw error;
   }

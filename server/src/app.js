@@ -5,6 +5,7 @@ import morgan from "morgan";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
 import assignmentRoutes from "./routes/assignmentRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import classroomRoutes from "./routes/classroomRoutes.js";
 import lessonRoutes from "./routes/lessonRoutes.js";
 import submissionRoutes from "./routes/submissionRoutes.js";
 import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
@@ -43,6 +44,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/classrooms", classroomRoutes);
 app.use("/api/lessons", lessonRoutes);
 app.use("/api/assignments", assignmentRoutes);
 app.use("/api/submissions", submissionRoutes);

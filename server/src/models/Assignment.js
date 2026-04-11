@@ -7,6 +7,11 @@ const assignmentSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    classroom: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Classroom",
+      required: true,
+    },
     lesson: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Lesson",
@@ -72,6 +77,9 @@ const assignmentSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
+
+assignmentSchema.index({ classroom: 1, createdAt: -1 });
+assignmentSchema.index({ teacher: 1, classroom: 1 });
 
 const Assignment = mongoose.model("Assignment", assignmentSchema);
 

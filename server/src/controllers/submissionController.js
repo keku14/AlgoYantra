@@ -5,6 +5,7 @@ import Performance from "../models/Performance.js";
 import Submission from "../models/Submission.js";
 import User from "../models/User.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { requireActiveClassroom } from "../utils/classroom.js";
 
 function buildFeedback(score) {
   if (score >= 90) {
@@ -75,10 +76,17 @@ async function updatePerformance(studentId, assignment, score, treeType, xpDelta
 }
 
 export const submitAssignment = asyncHandler(async (req, res) => {
+  const { activeClassroom } = await requireActiveClassroom(req.user);
   const assignment = await Assignment.findById(req.params.assignmentId);
 
   if (!assignment) {
     const error = new Error("Assignment not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (String(assignment.classroom) !== String(activeClassroom._id)) {
+    const error = new Error("Assignment not found in the active classroom.");
     error.statusCode = 404;
     throw error;
   }
@@ -145,7 +153,10 @@ export const submitAssignment = asyncHandler(async (req, res) => {
 });
 
 export const getMySubmissions = asyncHandler(async (req, res) => {
+  const { activeClassroom } = await requireActiveClassroom(req.user);
+  const classroomAssignments = await Assignment.find({ classroom: activeClassroom._id }).select("_id").lean();
   const submissions = await Submission.find({ student: req.user._id })
+    .where("assignment").in(classroomAssignments.map((assignment) => assignment._id))
     .populate("assignment", "title treeType xpReward")
     .sort({ submittedAt: -1 });
 
@@ -155,6 +166,7 @@ export const getMySubmissions = asyncHandler(async (req, res) => {
 });
 
 export const getAssignmentSubmissions = asyncHandler(async (req, res) => {
+  const { activeClassroom } = await requireActiveClassroom(req.user);
   const assignment = await Assignment.findById(req.params.assignmentId);
 
   if (!assignment) {
@@ -166,6 +178,12 @@ export const getAssignmentSubmissions = asyncHandler(async (req, res) => {
   if (String(assignment.teacher) !== String(req.user._id)) {
     const error = new Error("You can only view submissions for your own assignments.");
     error.statusCode = 403;
+    throw error;
+  }
+
+  if (String(assignment.classroom) !== String(activeClassroom._id)) {
+    const error = new Error("Assignment not found in the active classroom.");
+    error.statusCode = 404;
     throw error;
   }
 

@@ -1,9 +1,9 @@
 import Assignment from "../models/Assignment.js";
+import Classroom from "../models/Classroom.js";
 import Lesson from "../models/Lesson.js";
-import Performance from "../models/Performance.js";
 import Submission from "../models/Submission.js";
-import User from "../models/User.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { requireActiveClassroom } from "../utils/classroom.js";
 
 function round(value) {
   return Math.round(value * 10) / 10;
@@ -32,7 +32,11 @@ function bucketMistake(mistake) {
 }
 
 export const getTeacherOverview = asyncHandler(async (req, res) => {
-  const assignments = await Assignment.find({ teacher: req.user._id }).lean();
+  const { activeClassroom } = await requireActiveClassroom(req.user);
+  const assignments = await Assignment.find({
+    teacher: req.user._id,
+    classroom: activeClassroom._id,
+  }).lean();
   const assignmentIds = assignments.map((assignment) => assignment._id);
   const totalPossibleMarks = assignments.reduce((sum, assignment) => sum + Number(assignment.xpReward || 0), 0);
   const submissions = await Submission.find({
@@ -42,7 +46,11 @@ export const getTeacherOverview = asyncHandler(async (req, res) => {
     .populate("assignment", "title treeType xpReward")
     .lean();
 
-  const students = await User.find({ role: "student" }).lean();
+  const activeClassroomWithStudents = await Classroom
+    .findById(activeClassroom._id)
+    .populate("students", "name email xp level streak")
+    .lean();
+  const students = activeClassroomWithStudents?.students || [];
   const averageScore = submissions.length
     ? round(submissions.reduce((total, item) => total + item.score, 0) / submissions.length)
     : 0;
@@ -199,11 +207,20 @@ export const getTeacherOverview = asyncHandler(async (req, res) => {
     attempts: item.attempts,
   }));
 
-  const leaderboard = await Performance.find()
-    .populate("student", "name")
-    .sort({ totalXp: -1, accuracy: -1 })
-    .limit(8)
-    .lean();
+  const leaderboard = [...studentReportMap.values()]
+    .map((report) => ({
+      name: report.name || "Student",
+      totalXp: report.marksEarned,
+      accuracy: report.averageScore,
+      level: 1,
+      streak: report.attempts,
+    }))
+    .sort((left, right) => (
+      right.totalXp - left.totalXp
+      || right.accuracy - left.accuracy
+      || String(left.name).localeCompare(String(right.name))
+    ))
+    .slice(0, 8);
 
   res.status(200).json({
     overview: {
@@ -212,53 +229,110 @@ export const getTeacherOverview = asyncHandler(async (req, res) => {
       averageScore,
       liveSessionsEnabled: assignments.filter((assignment) => assignment.liveSessionEnabled).length,
     },
+    activeClassroom,
     studentPerformance,
     studentReports,
     mistakeHeatmap,
     treeTypePerformance,
     recentSubmissions: submissions.slice(0, 6),
-    leaderboard: leaderboard.map((item) => ({
-      name: item.student?.name || "Student",
-      totalXp: item.totalXp,
-      accuracy: item.accuracy,
-      level: item.level,
-      streak: item.streak,
-    })),
+    leaderboard,
   });
 });
 
 export const getStudentOverview = asyncHandler(async (req, res) => {
-  const performance = await Performance.findOne({ student: req.user._id }).lean();
-  const submissions = await Submission.find({ student: req.user._id })
+  const { activeClassroom } = await requireActiveClassroom(req.user);
+  const classroomAssignments = await Assignment.find({ classroom: activeClassroom._id }).lean();
+  const assignmentIds = classroomAssignments.map((assignment) => assignment._id);
+  const submissions = await Submission.find({
+    student: req.user._id,
+    assignment: { $in: assignmentIds },
+  })
     .populate("assignment", "title treeType xpReward")
     .sort({ submittedAt: -1 })
     .lean();
 
-  const leaderboard = await Performance.find()
-    .populate("student", "name")
-    .sort({ totalXp: -1, accuracy: -1 })
-    .limit(8)
-    .lean();
+  const totalXp = submissions.reduce((sum, submission) => (
+    sum + Math.round((Number(submission.score || 0) / 100) * Number(submission.assignment?.xpReward || 0))
+  ), 0);
+  const accuracy = submissions.length
+    ? round(submissions.reduce((sum, submission) => sum + Number(submission.score || 0), 0) / submissions.length)
+    : 0;
+  const groupedProgress = submissions.reduce((accumulator, submission) => {
+    const treeType = submission.assignment?.treeType || "unknown";
+    const existing = accumulator.get(treeType) || {
+      treeType,
+      title: treeType.toUpperCase(),
+      mastery: 0,
+      attempts: 0,
+    };
 
-  const progress = performance?.progress || [];
+    existing.mastery += Number(submission.score || 0);
+    existing.attempts += 1;
+    accumulator.set(treeType, existing);
+    return accumulator;
+  }, new Map());
+  const progress = [...groupedProgress.values()].map((entry) => ({
+    ...entry,
+    mastery: round(entry.mastery / entry.attempts),
+  }));
   const weakestTopic = [...progress].sort((left, right) => left.mastery - right.mastery)[0];
   const recommendedLessons = weakestTopic
     ? await Lesson.find({ type: weakestTopic.treeType }).limit(2).lean()
     : await Lesson.find().limit(2).lean();
 
   const assignmentBreakdown = submissions.reduce((accumulator, submission) => {
-    accumulator[submission.assignment.treeType] =
-      (accumulator[submission.assignment.treeType] || 0) + 1;
+    accumulator[submission.assignment.treeType] = (accumulator[submission.assignment.treeType] || 0) + 1;
     return accumulator;
   }, {});
 
+  const classroomRoster = await Classroom
+    .findById(activeClassroom._id)
+    .populate("students", "name email")
+    .lean();
+  const classStudentIds = (classroomRoster?.students || []).map((student) => student._id);
+  const classSubmissions = await Submission.find({
+    student: { $in: classStudentIds },
+    assignment: { $in: assignmentIds },
+  })
+    .populate("student", "name")
+    .populate("assignment", "xpReward")
+    .lean();
+  const leaderboardMap = classSubmissions.reduce((accumulator, submission) => {
+    const key = String(submission.student?._id || submission.student);
+    const current = accumulator.get(key) || {
+      name: submission.student?.name || "Student",
+      totalXp: 0,
+      accuracy: 0,
+      attempts: 0,
+      level: 1,
+    };
+
+    current.totalXp += Math.round((Number(submission.score || 0) / 100) * Number(submission.assignment?.xpReward || 0));
+    current.accuracy += Number(submission.score || 0);
+    current.attempts += 1;
+    accumulator.set(key, current);
+    return accumulator;
+  }, new Map());
+  const leaderboard = [...leaderboardMap.values()]
+    .map((entry) => ({
+      ...entry,
+      accuracy: entry.attempts ? round(entry.accuracy / entry.attempts) : 0,
+    }))
+    .sort((left, right) => (
+      right.totalXp - left.totalXp
+      || right.accuracy - left.accuracy
+      || String(left.name).localeCompare(String(right.name))
+    ))
+    .slice(0, 8);
+
   res.status(200).json({
     overview: {
-      accuracy: performance?.accuracy || 0,
-      totalXp: performance?.totalXp || req.user.xp || 0,
-      level: performance?.level || req.user.level || 1,
-      streak: performance?.streak || req.user.streak || 0,
+      accuracy,
+      totalXp,
+      level: Math.max(1, Math.floor(totalXp / 300) + 1),
+      streak: submissions.length,
     },
+    activeClassroom,
     progress,
     recentResults: submissions.slice(0, 8),
     assignmentBreakdown: Object.entries(assignmentBreakdown).map(([treeType, attempts]) => ({
@@ -266,29 +340,53 @@ export const getStudentOverview = asyncHandler(async (req, res) => {
       attempts,
     })),
     recommendedLessons,
-    leaderboard: leaderboard.map((item) => ({
-      name: item.student?.name || "Student",
-      totalXp: item.totalXp,
-      accuracy: item.accuracy,
-      level: item.level,
-    })),
+    leaderboard,
   });
 });
 
-export const getLeaderboard = asyncHandler(async (_req, res) => {
-  const leaderboard = await Performance.find()
-    .populate("student", "name")
-    .sort({ totalXp: -1, accuracy: -1 })
-    .limit(12)
+export const getLeaderboard = asyncHandler(async (req, res) => {
+  const { activeClassroom } = await requireActiveClassroom(req.user);
+  const classroomAssignments = await Assignment.find({ classroom: activeClassroom._id }).select("_id").lean();
+  const classroom = await Classroom
+    .findById(activeClassroom._id)
+    .populate("students", "name")
     .lean();
+  const submissions = await Submission.find({
+    assignment: { $in: classroomAssignments.map((assignment) => assignment._id) },
+    student: { $in: (classroom?.students || []).map((student) => student._id) },
+  })
+    .populate("student", "name")
+    .populate("assignment", "xpReward")
+    .lean();
+  const leaderboardMap = submissions.reduce((accumulator, submission) => {
+    const key = String(submission.student?._id || submission.student);
+    const current = accumulator.get(key) || {
+      name: submission.student?.name || "Student",
+      totalXp: 0,
+      accuracy: 0,
+      level: 1,
+      streak: 0,
+    };
+
+    current.totalXp += Math.round((Number(submission.score || 0) / 100) * Number(submission.assignment?.xpReward || 0));
+    current.accuracy += Number(submission.score || 0);
+    current.streak += 1;
+    accumulator.set(key, current);
+    return accumulator;
+  }, new Map());
+  const leaderboard = [...leaderboardMap.values()]
+    .map((entry) => ({
+      ...entry,
+      accuracy: entry.streak ? round(entry.accuracy / entry.streak) : 0,
+    }))
+    .sort((left, right) => (
+      right.totalXp - left.totalXp
+      || right.accuracy - left.accuracy
+      || String(left.name).localeCompare(String(right.name))
+    ))
+    .slice(0, 12);
 
   res.status(200).json({
-    leaderboard: leaderboard.map((item) => ({
-      name: item.student?.name || "Student",
-      totalXp: item.totalXp,
-      accuracy: item.accuracy,
-      level: item.level,
-      streak: item.streak,
-    })),
+    leaderboard,
   });
 });
