@@ -6,8 +6,9 @@ shared/node_modules/
 
 # Build output
 dist/
+!client/dist/
+!client/dist/**
 build/
-client/dist/
 server/dist/
 shared/dist/
 
