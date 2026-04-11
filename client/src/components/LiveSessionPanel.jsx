@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
+import { getSocketUrl } from "../config/runtime.js";
+
 import SectionCard from "./SectionCard.jsx";
 
 export default function LiveSessionPanel({
@@ -19,7 +21,7 @@ export default function LiveSessionPanel({
   const [quizOptions, setQuizOptions] = useState("LL rotation, RR rotation, Color flip");
 
   useEffect(() => {
-    const socket = io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5001");
+    const socket = io(getSocketUrl());
     socketRef.current = socket;
 
     socket.on("session:state", (nextSession) => {
