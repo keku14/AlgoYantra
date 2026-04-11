@@ -12,6 +12,7 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import AuthForm from "../components/AuthForm.jsx";
+import SiteBrand from "../components/SiteBrand.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -117,7 +118,8 @@ export default function AuthPage() {
           ) : null}
         </AnimatePresence>
 
-        <div className="mb-6 flex items-start justify-end gap-3">
+        <div className="mb-6 flex items-start justify-between gap-3">
+          <SiteBrand />
           <div ref={profileRef} className="relative z-20">
             <div className="flex items-center gap-3">
               <button

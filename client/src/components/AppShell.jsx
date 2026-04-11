@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut, Sparkles } from "lucide-react";
+import { ChevronDown, LogOut } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext.jsx";
+import SiteBrand from "./SiteBrand.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
 
 export default function AppShell({
@@ -36,24 +37,7 @@ export default function AppShell({
     <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex items-start justify-between gap-4">
-          {!hideHeader ? (
-            <div className="flex items-center gap-3">
-              <div className="rounded-[1.25rem] bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-400 p-3 shadow-glow">
-                <Sparkles className="text-slate-950" size={22} />
-              </div>
-              <div>
-                <p className="font-display text-xl font-bold tracking-[-0.04em] text-white light:text-slate-900">
-                  AlgoYantra
-                </p>
-                <p className="text-sm text-slate-400 light:text-slate-600">
-                  Tree learning cockpit
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div />
-          )}
-
+          <SiteBrand />
           <div className="flex items-center gap-3">
             <ThemeToggle />
 

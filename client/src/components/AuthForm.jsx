@@ -1,12 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-export default function AuthForm({ mode, loading, onSubmit }) {
+export default function AuthForm({ mode, loading, onSubmit, initialRole = "teacher" }) {
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: "",
-    role: "teacher",
+    role: initialRole,
   });
+
+  useEffect(() => {
+    setForm((current) => ({
+      ...current,
+      role: initialRole,
+    }));
+  }, [initialRole]);
 
   function handleChange(event) {
     const { name, value } = event.target;

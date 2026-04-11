@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "./routes/ProtectedRoute.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
+import LandingPage from "./pages/LandingPage.jsx";
 
 const TeacherDashboard = lazy(() => import("./pages/TeacherDashboard.jsx"));
 const StudentDashboard = lazy(() => import("./pages/StudentDashboard.jsx"));
@@ -22,7 +23,7 @@ function HomeRedirect() {
 	}
 
 	if (!user) {
-		return <AuthPage />;
+		return <LandingPage />;
 	}
 
 	return (
@@ -42,7 +43,7 @@ export default function App() {
 			}>
 			<Routes>
 				<Route path="/" element={<HomeRedirect />} />
-				<Route path="/auth" element={<HomeRedirect />} />
+				<Route path="/auth" element={<AuthPage />} />
 				<Route
 					path="/teacher"
 					element={
