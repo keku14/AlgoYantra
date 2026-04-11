@@ -316,21 +316,54 @@ function buildProgressTemplates() {
 }
 
 export async function seedDatabase() {
-  const userCount = await User.countDocuments();
+  let seededAny = false;
 
-  if (userCount > 0) {
-    return {
-      seeded: false,
-      reason: "Database already contains users.",
-    };
+  let teacher = await User.findOne({ email: defaultAccounts.teacher.email.toLowerCase() });
+  if (!teacher) {
+    teacher = await User.create(defaultAccounts.teacher);
+    seededAny = true;
   }
 
-  const teacher = await User.create(defaultAccounts.teacher);
-  const student = await User.create(defaultAccounts.student);
-  const lessons = await Lesson.insertMany(buildLessonTemplates(teacher._id));
+  let student = await User.findOne({ email: defaultAccounts.student.email.toLowerCase() });
+  if (!student) {
+    student = await User.create(defaultAccounts.student);
+    seededAny = true;
+  }
+
+  const lessonTemplates = buildLessonTemplates(teacher._id);
+  const lessons = [];
+
+  for (const template of lessonTemplates) {
+    let lesson = await Lesson.findOne({
+      teacher: teacher._id,
+      title: template.title,
+    });
+
+    if (!lesson) {
+      lesson = await Lesson.create(template);
+      seededAny = true;
+    }
+
+    lessons.push(lesson);
+  }
 
   const lessonMap = Object.fromEntries(lessons.map((lesson) => [lesson.title, lesson._id]));
-  const assignments = await Assignment.insertMany(buildAssignmentTemplates(teacher._id, lessonMap));
+  const assignmentTemplates = buildAssignmentTemplates(teacher._id, lessonMap);
+  const assignments = [];
+
+  for (const template of assignmentTemplates) {
+    let assignment = await Assignment.findOne({
+      teacher: teacher._id,
+      title: template.title,
+    });
+
+    if (!assignment) {
+      assignment = await Assignment.create(template);
+      seededAny = true;
+    }
+
+    assignments.push(assignment);
+  }
 
   const sampleTree = createTreeFromValues(TREE_TYPES.BST, [50, 35, 70, 10, 60]);
   const bstAssignment = assignments.find((assignment) => assignment.treeType === TREE_TYPES.BST);
@@ -341,40 +374,52 @@ export async function seedDatabase() {
     submittedTraversals: [{ order: "inorder", values: [10, 35, 50, 60, 70] }],
   });
 
-  await Submission.create({
+  const existingSubmission = await Submission.findOne({
     assignment: bstAssignment._id,
     student: student._id,
-    answers: {
-      tree: sampleTree,
-      traversals: [{ order: "inorder", values: [10, 35, 50, 60, 70] }],
-      notes: ["Used range reasoning to keep the tree valid after deletion."],
-    },
-    score: evaluation.score,
-    mistakes: evaluation.mistakes,
-    suggestions: evaluation.suggestions,
-    correctTree: evaluation.correctTree,
-    feedback: "Strong structural reasoning. Review deletion successor logic once more for speed.",
   });
 
-  await Performance.create({
-    student: student._id,
-    history: assignments.map((assignment, index) => ({
-      assignmentTitle: assignment.title,
-      treeType: assignment.treeType,
-      score: Math.min(100, 72 + index * 7),
-      xpGained: assignment.xpReward,
-      completedAt: new Date(Date.now() - index * 86400000),
-    })),
-    accuracy: 84,
-    progress: buildProgressTemplates(),
-    totalXp: 630,
-    streak: 6,
-    level: 4,
-    lastSubmissionAt: new Date(),
-  });
+  if (!existingSubmission) {
+    await Submission.create({
+      assignment: bstAssignment._id,
+      student: student._id,
+      answers: {
+        tree: sampleTree,
+        traversals: [{ order: "inorder", values: [10, 35, 50, 60, 70] }],
+        notes: ["Used range reasoning to keep the tree valid after deletion."],
+      },
+      score: evaluation.score,
+      mistakes: evaluation.mistakes,
+      suggestions: evaluation.suggestions,
+      correctTree: evaluation.correctTree,
+      feedback: "Strong structural reasoning. Review deletion successor logic once more for speed.",
+    });
+    seededAny = true;
+  }
+
+  const existingPerformance = await Performance.findOne({ student: student._id });
+  if (!existingPerformance) {
+    await Performance.create({
+      student: student._id,
+      history: assignments.map((assignment, index) => ({
+        assignmentTitle: assignment.title,
+        treeType: assignment.treeType,
+        score: Math.min(100, 72 + index * 7),
+        xpGained: assignment.xpReward,
+        completedAt: new Date(Date.now() - index * 86400000),
+      })),
+      accuracy: 84,
+      progress: buildProgressTemplates(),
+      totalXp: 630,
+      streak: 6,
+      level: 4,
+      lastSubmissionAt: new Date(),
+    });
+    seededAny = true;
+  }
 
   return {
-    seeded: true,
+    seeded: seededAny,
     teacher: defaultAccounts.teacher.email,
     student: defaultAccounts.student.email,
   };
