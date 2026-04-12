@@ -79,14 +79,8 @@ export default function TeacherDashboard() {
   }
 
   useEffect(() => {
-    if (activeTab !== "classrooms" && !activeClassroom?._id) {
-      setActiveTab("classrooms");
-      return;
-    }
-
     if (!hasActiveClassroom) {
       setLoading(false);
-      setActiveTab("classrooms");
       return;
     }
 
