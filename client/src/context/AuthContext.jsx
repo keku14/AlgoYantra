@@ -3,6 +3,19 @@ import { createContext, useContext, useEffect, useState } from "react";
 import api from "../api/client.js";
 
 const AuthContext = createContext(null);
+const DEFAULT_DASHBOARD_TAB = "classrooms";
+const DASHBOARD_TAB_STORAGE_KEYS = {
+  teacher: "algoyantra_teacher_active_tab",
+  student: "algoyantra_student_active_tab",
+};
+
+function resetDashboardTab(role) {
+  const storageKey = DASHBOARD_TAB_STORAGE_KEYS[role];
+
+  if (storageKey) {
+    localStorage.setItem(storageKey, DEFAULT_DASHBOARD_TAB);
+  }
+}
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem("algoyantra_token"));
@@ -55,6 +68,7 @@ export function AuthProvider({ children }) {
     const endpoint = mode === "signup" ? "/auth/signup" : "/auth/login";
     const { data } = await api.post(endpoint, payload);
     localStorage.setItem("algoyantra_token", data.token);
+    resetDashboardTab(data.user?.role);
     setToken(data.token);
     setUser(data.user);
     await fetchProfile({ clearInitialActiveClassroom: true });

@@ -36,6 +36,7 @@ const tabs = [
   { id: "analytics", label: "Analytics", icon: LineChart },
 ];
 const TAB_STORAGE_KEY = "algoyantra_student_active_tab";
+const DEFAULT_STUDENT_TAB = "classrooms";
 
 export default function StudentDashboard() {
   const {
@@ -47,7 +48,7 @@ export default function StudentDashboard() {
     leaveClassroom,
     switchClassroom,
   } = useAuth();
-  const [activeTab, setActiveTab] = useState(() => localStorage.getItem(TAB_STORAGE_KEY) || "assignments");
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem(TAB_STORAGE_KEY) || DEFAULT_STUDENT_TAB);
   const [loading, setLoading] = useState(true);
   const [joiningClassroom, setJoiningClassroom] = useState(false);
   const [switchingClassroom, setSwitchingClassroom] = useState(false);
