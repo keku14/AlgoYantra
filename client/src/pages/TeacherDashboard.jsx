@@ -31,6 +31,7 @@ export default function TeacherDashboard() {
     clearActiveClassroom,
     createClassroom,
     deleteClassroom,
+    refreshProfile,
     switchClassroom,
     updateClassroom,
   } = useAuth();
@@ -321,6 +322,15 @@ export default function TeacherDashboard() {
     };
   }
 
+  async function handleRemoveStudentFromClassroom(classroomId, studentId) {
+    await api.delete(`/classrooms/${classroomId}/students/${studentId}`);
+    await refreshProfile();
+
+    if (String(activeClassroom?._id || "") === String(classroomId)) {
+      await loadDashboard();
+    }
+  }
+
   const noClassroomState = (
     <SectionCard title="No classroom selected" eyebrow="Create your first class space">
       <div className="rounded-[1.5rem] border border-dashed border-white/15 p-6 text-sm leading-7 text-slate-400 light:border-slate-300 light:text-slate-600">
@@ -569,6 +579,7 @@ export default function TeacherDashboard() {
           onClearActiveClassroom={handleClearActiveClassroom}
           onCreateClassroom={handleCreateClassroom}
           onLoadTeacherRoster={handleLoadTeacherRoster}
+          onRemoveStudentFromClassroom={handleRemoveStudentFromClassroom}
           onUpdateClassroom={handleUpdateClassroom}
           onDeleteClassroom={handleDeleteClassroom}
           switchingClassroom={switchingClassroom}

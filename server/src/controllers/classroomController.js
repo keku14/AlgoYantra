@@ -162,6 +162,60 @@ export const leaveClassroom = asyncHandler(async (req, res) => {
   });
 });
 
+export const removeStudentFromClassroom = asyncHandler(async (req, res) => {
+  const classroom = await Classroom.findById(req.params.classroomId)
+    .populate("teacher", "name email")
+    .populate("students", "name email xp level streak");
+
+  if (!classroom) {
+    const error = new Error("Classroom not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  ensureClassroomOwnership(req.user, classroom);
+
+  const studentId = String(req.params.studentId || "");
+  const studentToRemove = (classroom.students || []).find(
+    (student) => String(student._id || student) === studentId,
+  );
+
+  if (!studentToRemove) {
+    const error = new Error("Student not found in this classroom.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  classroom.students = (classroom.students || []).filter(
+    (student) => String(student._id || student) !== studentId,
+  );
+  await classroom.save();
+
+  const removedStudentUser = await User.findById(studentId).select("activeClassroom");
+
+  if (removedStudentUser && String(removedStudentUser.activeClassroom || "") === String(classroom._id)) {
+    const fallbackClassroom = await Classroom.findOne({
+      _id: { $ne: classroom._id },
+      students: studentId,
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    removedStudentUser.activeClassroom = fallbackClassroom?._id || null;
+    await removedStudentUser.save();
+  }
+
+  const refreshedClassroom = await Classroom.findById(req.params.classroomId)
+    .populate("teacher", "name email")
+    .populate("students", "name email xp level streak");
+
+  res.status(200).json({
+    message: "Student removed from classroom.",
+    classroom: serializeClassroom(refreshedClassroom),
+    students: refreshedClassroom.students,
+  });
+});
+
 export const setActiveClassroom = asyncHandler(async (req, res) => {
   const { classrooms } = await syncActiveClassroom(req.user);
   const nextClassroom = classrooms.find(

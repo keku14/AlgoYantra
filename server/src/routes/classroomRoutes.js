@@ -8,6 +8,7 @@ import {
   getMyClassrooms,
   joinClassroom,
   leaveClassroom,
+  removeStudentFromClassroom,
   setActiveClassroom,
   updateClassroom,
 } from "../controllers/classroomController.js";
@@ -20,6 +21,7 @@ router.get("/", getMyClassrooms);
 router.post("/", authorize("teacher"), createClassroom);
 router.post("/join", authorize("student"), joinClassroom);
 router.delete("/:classroomId/leave", authorize("student"), leaveClassroom);
+router.delete("/:classroomId/students/:studentId", authorize("teacher"), removeStudentFromClassroom);
 router.patch("/active/clear", clearActiveClassroom);
 router.patch("/:classroomId/active", setActiveClassroom);
 router.put("/:classroomId", authorize("teacher"), updateClassroom);
