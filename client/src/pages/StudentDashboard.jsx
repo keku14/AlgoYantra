@@ -65,6 +65,10 @@ export default function StudentDashboard() {
   const [analyticsTreePreview, setAnalyticsTreePreview] = useState(null);
   const solverHistory = useHistoryState(null);
   const hasActiveClassroom = Boolean(activeClassroom?._id);
+  const navigationTabs = tabs.map((tab) => ({
+    ...tab,
+    disabled: !hasActiveClassroom && tab.id !== "classrooms",
+  }));
 
   async function loadDashboard() {
     if (!hasActiveClassroom) {
@@ -381,7 +385,7 @@ export default function StudentDashboard() {
       title="Student dashboard"
       subtitle="Start each assignment with an empty workspace, build the tree from scratch, and track your progress."
       user={user}
-      tabs={tabs}
+      tabs={navigationTabs}
       activeTab={activeTab}
       onTabChange={setActiveTab}
       topActions={(

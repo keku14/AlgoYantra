@@ -158,9 +158,7 @@ export async function syncActiveClassroom(user) {
   const matchedActiveClassroom = classrooms.find(
     (classroom) => String(classroom._id) === String(user.activeClassroom || ""),
   ) || null;
-  const activeClassroom = user.role === "teacher"
-    ? (matchedActiveClassroom || classrooms[0] || null)
-    : matchedActiveClassroom;
+  const activeClassroom = matchedActiveClassroom;
 
   if (String(user.activeClassroom || "") !== String(activeClassroom?._id || "")) {
     user.activeClassroom = activeClassroom?._id || null;

@@ -50,6 +50,10 @@ export default function TeacherDashboard() {
   const [pendingDeleteAssignmentId, setPendingDeleteAssignmentId] = useState(null);
   const [isAssignmentEditorOpen, setIsAssignmentEditorOpen] = useState(false);
   const hasActiveClassroom = Boolean(activeClassroom?._id);
+  const navigationTabs = tabs.map((tab) => ({
+    ...tab,
+    disabled: !hasActiveClassroom && tab.id !== "classrooms",
+  }));
 
   async function loadDashboard() {
     if (!hasActiveClassroom) {
@@ -81,6 +85,7 @@ export default function TeacherDashboard() {
   useEffect(() => {
     if (!hasActiveClassroom) {
       setLoading(false);
+      setActiveTab("classrooms");
       return;
     }
 
@@ -506,7 +511,7 @@ export default function TeacherDashboard() {
       title="Teacher dashboard"
       subtitle="Create assignments for students and review results assignment by assignment."
       user={user}
-      tabs={tabs}
+      tabs={navigationTabs}
       activeTab={activeTab}
       onTabChange={setActiveTab}
       topActions={(

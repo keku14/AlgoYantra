@@ -84,14 +84,21 @@ export default function AppShell({
                       <button
                         key={tab.id}
                         type="button"
+                        disabled={Boolean(tab.disabled)}
                         onClick={() => {
+                          if (tab.disabled) {
+                            return;
+                          }
+
                           onTabChange(tab.id);
                           setIsProfileMenuOpen(false);
                         }}
                         className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${
                           activeTab === tab.id
                             ? "bg-white text-slate-950 shadow-lg shadow-indigo-500/10"
-                            : "text-slate-200 hover:bg-white/10 light:text-slate-700 light:hover:bg-slate-100"
+                            : tab.disabled
+                              ? "cursor-not-allowed text-slate-500 opacity-60 light:text-slate-400"
+                              : "text-slate-200 hover:bg-white/10 light:text-slate-700 light:hover:bg-slate-100"
                         }`}
                       >
                         <tab.icon size={18} />
