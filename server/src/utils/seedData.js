@@ -7,10 +7,12 @@ import {
 } from "@algoyantra/shared";
 
 import Assignment from "../models/Assignment.js";
+import Classroom from "../models/Classroom.js";
 import Lesson from "../models/Lesson.js";
 import Performance from "../models/Performance.js";
 import Submission from "../models/Submission.js";
 import User from "../models/User.js";
+import { generateUniqueClassroomCode } from "./classroom.js";
 
 const defaultAccounts = {
   teacher: {
@@ -315,6 +317,39 @@ function buildProgressTemplates() {
   }));
 }
 
+async function ensureSeedClassroom(teacher, student) {
+  let classroom = await Classroom.findOne({
+    teacher: teacher._id,
+    name: "AlgoYantra Demo Classroom",
+  });
+
+  if (!classroom) {
+    classroom = await Classroom.create({
+      name: "AlgoYantra Demo Classroom",
+      institution: "AlgoYantra Academy",
+      section: "Demo",
+      code: await generateUniqueClassroomCode(),
+      teacher: teacher._id,
+      students: [student._id],
+    });
+
+    return { classroom, created: true };
+  }
+
+  let updated = false;
+
+  if (!Array.isArray(classroom.students) || !classroom.students.some((id) => String(id) === String(student._id))) {
+    classroom.students = [...(classroom.students || []), student._id];
+    updated = true;
+  }
+
+  if (updated) {
+    await classroom.save();
+  }
+
+  return { classroom, created: updated };
+}
+
 export async function seedDatabase() {
   let seededAny = false;
 
@@ -327,6 +362,21 @@ export async function seedDatabase() {
   let student = await User.findOne({ email: defaultAccounts.student.email.toLowerCase() });
   if (!student) {
     student = await User.create(defaultAccounts.student);
+    seededAny = true;
+  }
+
+  const { classroom, created: classroomChanged } = await ensureSeedClassroom(teacher, student);
+  seededAny = seededAny || classroomChanged;
+
+  if (String(teacher.activeClassroom || "") !== String(classroom._id)) {
+    teacher.activeClassroom = classroom._id;
+    await teacher.save();
+    seededAny = true;
+  }
+
+  if (String(student.activeClassroom || "") !== String(classroom._id)) {
+    student.activeClassroom = classroom._id;
+    await student.save();
     seededAny = true;
   }
 
@@ -358,7 +408,10 @@ export async function seedDatabase() {
     });
 
     if (!assignment) {
-      assignment = await Assignment.create(template);
+      assignment = await Assignment.create({
+        ...template,
+        classroom: classroom._id,
+      });
       seededAny = true;
     }
 
