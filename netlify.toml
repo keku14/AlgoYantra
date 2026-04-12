@@ -1,0 +1,38 @@
+[build]
+  command = "npm run build --workspace client"
+  publish = "client/dist"
+
+[[redirects]]
+  from = "/"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/auth"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/auth/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/teacher"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/teacher/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/student"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/student/*"
+  to = "/index.html"
+  status = 200

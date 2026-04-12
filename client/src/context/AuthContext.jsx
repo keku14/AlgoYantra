@@ -25,7 +25,7 @@ export function AuthProvider({ children }) {
   const [activeClassroom, setActiveClassroom] = useState(null);
   const [loading, setLoading] = useState(Boolean(localStorage.getItem("algoyantra_token")));
 
-  async function fetchProfile({ clearInitialActiveClassroom = false } = {}) {
+  async function fetchProfile() {
     const storedToken = localStorage.getItem("algoyantra_token");
 
     if (!storedToken) {
@@ -37,12 +37,7 @@ export function AuthProvider({ children }) {
 
     try {
       setLoading(true);
-      let { data } = await api.get("/auth/me");
-
-      if (clearInitialActiveClassroom && data.activeClassroom?._id) {
-        await api.patch("/classrooms/active/clear");
-        ({ data } = await api.get("/auth/me"));
-      }
+      const { data } = await api.get("/auth/me");
 
       setUser(data.user);
       setPerformance(data.performance || null);
@@ -61,7 +56,7 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    fetchProfile({ clearInitialActiveClassroom: true });
+    fetchProfile();
   }, []);
 
   async function authenticate(mode, payload) {
@@ -71,7 +66,7 @@ export function AuthProvider({ children }) {
     resetDashboardTab(data.user?.role);
     setToken(data.token);
     setUser(data.user);
-    await fetchProfile({ clearInitialActiveClassroom: true });
+    await fetchProfile();
     return data.user;
   }
 
