@@ -53,6 +53,11 @@ npm run dev
 
 Frontend runs on `http://localhost:5173` and backend runs on `http://localhost:5001`.
 
+## Deployment
+
+- Single-service deployment: run the root build command and start the server. In production, the Express app now serves `client/dist` and keeps `/api/*` routed to the backend.
+- Separate frontend/backend deployment: set `VITE_API_URL` and `VITE_SOCKET_URL` in the frontend deployment to your backend's public URL, and set `CLIENT_URL` in the backend deployment to your frontend URL.
+
 ## Environment Variables
 
 ### `server/.env`
