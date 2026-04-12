@@ -77,6 +77,10 @@ export const login = asyncHandler(async (req, res) => {
     throw error;
   }
 
+  if (user.role === "student") {
+    user.activeClassroom = null;
+  }
+
   user.lastActiveAt = new Date();
   await user.save();
 

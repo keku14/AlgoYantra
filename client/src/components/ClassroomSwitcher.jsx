@@ -7,7 +7,7 @@ export default function ClassroomSwitcher({
         Classroom
       </span>
       <span className="min-w-[180px] truncate text-sm font-medium">
-        {activeClassroom?.name || "No active class"}
+        {activeClassroom?.name || "Select classroom"}
       </span>
     </div>
   );

@@ -97,6 +97,7 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     if (!hasActiveClassroom) {
+      setLoading(false);
       setActiveTab("classrooms");
       return;
     }

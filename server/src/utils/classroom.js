@@ -34,6 +34,7 @@ export function serializeClassroom(classroom) {
     return null;
   }
 
+  const pendingAssignmentCount = Number(classroom.pendingAssignmentCount || 0);
   const value = classroom.toObject ? classroom.toObject() : classroom;
   const students = Array.isArray(value.students) ? value.students : [];
 
@@ -45,6 +46,7 @@ export function serializeClassroom(classroom) {
     code: value.code,
     teacher: value.teacher,
     studentCount: students.length,
+    pendingAssignmentCount,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
   };
@@ -124,12 +126,41 @@ async function ensureLegacyClassroomsForUser(user) {
 export async function syncActiveClassroom(user) {
   await ensureLegacyClassroomsForUser(user);
   const classrooms = await getUserClassrooms(user);
+
+  if (user.role === "student" && classrooms.length) {
+    const classroomIds = classrooms.map((classroom) => classroom._id);
+    const assignments = await Assignment.find({
+      classroom: { $in: classroomIds },
+    }).select("_id classroom").lean();
+    const submissions = await Submission.find({
+      student: user._id,
+      assignment: { $in: assignments.map((assignment) => assignment._id) },
+    }).select("assignment").lean();
+    const submittedAssignmentIds = new Set(
+      submissions.map((submission) => String(submission.assignment)),
+    );
+    const pendingByClassroomId = new Map();
+
+    assignments.forEach((assignment) => {
+      if (submittedAssignmentIds.has(String(assignment._id))) {
+        return;
+      }
+
+      const classroomId = String(assignment.classroom);
+      pendingByClassroomId.set(classroomId, (pendingByClassroomId.get(classroomId) || 0) + 1);
+    });
+
+    classrooms.forEach((classroom) => {
+      classroom.pendingAssignmentCount = pendingByClassroomId.get(String(classroom._id)) || 0;
+    });
+  }
+
   const matchedActiveClassroom = classrooms.find(
     (classroom) => String(classroom._id) === String(user.activeClassroom || ""),
   ) || null;
   const activeClassroom = user.role === "teacher"
-    ? matchedActiveClassroom
-    : (matchedActiveClassroom || classrooms[0] || null);
+    ? (matchedActiveClassroom || classrooms[0] || null)
+    : matchedActiveClassroom;
 
   if (String(user.activeClassroom || "") !== String(activeClassroom?._id || "")) {
     user.activeClassroom = activeClassroom?._id || null;

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { Check, ClipboardCopy, DoorOpen, GraduationCap, Info, Minus, Plus, School, UserMinus, Users, X } from "lucide-react";
+import { BellRing, Check, ClipboardCopy, DoorOpen, GraduationCap, Info, Minus, Plus, School, UserMinus, Users, X } from "lucide-react";
 
 import SectionCard from "./SectionCard.jsx";
 
@@ -341,6 +341,7 @@ export default function ClassroomHub({
             <div className="dashboard-scrollbar flex-1 space-y-3 overflow-y-auto pr-2">
               {sortedClassrooms.length ? sortedClassrooms.map((classroom) => {
                 const isActive = String(activeClassroom?._id || "") === String(classroom._id);
+                const pendingAssignmentCount = Number(classroom.pendingAssignmentCount || 0);
 
                 return (
                   <button
@@ -360,19 +361,29 @@ export default function ClassroomHub({
                           {getClassroomMeta(classroom) || "Classroom"}
                         </p>
                         <h3 className="mt-2 font-display text-xl font-semibold">{classroom.name}</h3>
+                        <div className={`mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${
+                          pendingAssignmentCount > 0
+                            ? "border-amber-300/20 bg-amber-500/10 text-amber-100 light:text-amber-700"
+                            : "border-white/10 bg-white/5 text-slate-300 light:border-slate-200 light:bg-slate-100 light:text-slate-600"
+                        }`}>
+                          <BellRing size={14} />
+                          {pendingAssignmentCount} pending assignment{pendingAssignmentCount === 1 ? "" : "s"}
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          setClassroomPendingLeave(classroom);
-                        }}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-rose-300/20 bg-rose-500/10 text-rose-100 transition hover:bg-rose-500/20 light:text-rose-700"
-                        aria-label={`Leave ${classroom.name}`}
-                      >
-                        <Minus size={16} />
-                      </button>
+                      <div className="flex items-start gap-2">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setClassroomPendingLeave(classroom);
+                          }}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-rose-300/20 bg-rose-500/10 text-rose-100 transition hover:bg-rose-500/20 light:text-rose-700"
+                          aria-label={`Leave ${classroom.name}`}
+                        >
+                          <Minus size={16} />
+                        </button>
+                      </div>
                     </div>
                     {isActive ? (
                       <div className="mt-4 text-sm font-medium text-emerald-300 light:text-emerald-700">
