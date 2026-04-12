@@ -127,6 +127,41 @@ export const joinClassroom = asyncHandler(async (req, res) => {
   });
 });
 
+export const leaveClassroom = asyncHandler(async (req, res) => {
+  const classroom = await Classroom.findById(req.params.classroomId);
+
+  if (!classroom) {
+    const error = new Error("Classroom not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const isStudentMember = (classroom.students || []).some(
+    (studentId) => String(studentId) === String(req.user._id),
+  );
+
+  if (!isStudentMember) {
+    const error = new Error("You are not enrolled in this classroom.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  classroom.students = (classroom.students || []).filter(
+    (studentId) => String(studentId) !== String(req.user._id),
+  );
+  await classroom.save();
+
+  if (String(req.user.activeClassroom || "") === String(classroom._id)) {
+    req.user.activeClassroom = null;
+    await req.user.save();
+  }
+
+  res.status(200).json({
+    message: "Classroom left successfully.",
+    activeClassroom: null,
+  });
+});
+
 export const setActiveClassroom = asyncHandler(async (req, res) => {
   const { classrooms } = await syncActiveClassroom(req.user);
   const nextClassroom = classrooms.find(

@@ -44,6 +44,7 @@ export default function StudentDashboard() {
     classrooms,
     activeClassroom,
     joinClassroom,
+    leaveClassroom,
     switchClassroom,
   } = useAuth();
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem(TAB_STORAGE_KEY) || "assignments");
@@ -192,6 +193,19 @@ export default function StudentDashboard() {
       setActiveTab("classrooms");
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to switch classroom.");
+    } finally {
+      setSwitchingClassroom(false);
+    }
+  }
+
+  async function handleLeaveClassroom(classroomId) {
+    try {
+      setSwitchingClassroom(true);
+      await leaveClassroom(classroomId);
+      toast.success("Left classroom.");
+      setActiveTab("classrooms");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to leave classroom.");
     } finally {
       setSwitchingClassroom(false);
     }
@@ -390,6 +404,7 @@ export default function StudentDashboard() {
           activeClassroom={activeClassroom}
           onSwitchClassroom={handleSwitchClassroom}
           onJoinClassroom={handleJoinClassroom}
+          onLeaveClassroom={handleLeaveClassroom}
           switchingClassroom={switchingClassroom}
           mutatingClassroom={joiningClassroom}
         />

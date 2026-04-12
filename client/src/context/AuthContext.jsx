@@ -12,7 +12,7 @@ export function AuthProvider({ children }) {
   const [activeClassroom, setActiveClassroom] = useState(null);
   const [loading, setLoading] = useState(Boolean(localStorage.getItem("algoyantra_token")));
 
-  async function fetchProfile() {
+  async function fetchProfile({ clearInitialActiveClassroom = false } = {}) {
     const storedToken = localStorage.getItem("algoyantra_token");
 
     if (!storedToken) {
@@ -24,7 +24,13 @@ export function AuthProvider({ children }) {
 
     try {
       setLoading(true);
-      const { data } = await api.get("/auth/me");
+      let { data } = await api.get("/auth/me");
+
+      if (clearInitialActiveClassroom && data.activeClassroom?._id) {
+        await api.patch("/classrooms/active/clear");
+        ({ data } = await api.get("/auth/me"));
+      }
+
       setUser(data.user);
       setPerformance(data.performance || null);
       setClassrooms(data.classrooms || []);
@@ -42,7 +48,7 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    fetchProfile();
+    fetchProfile({ clearInitialActiveClassroom: true });
   }, []);
 
   async function authenticate(mode, payload) {
@@ -51,7 +57,7 @@ export function AuthProvider({ children }) {
     localStorage.setItem("algoyantra_token", data.token);
     setToken(data.token);
     setUser(data.user);
-    await fetchProfile();
+    await fetchProfile({ clearInitialActiveClassroom: true });
     return data.user;
   }
 
@@ -76,6 +82,12 @@ export function AuthProvider({ children }) {
 
   async function joinClassroom(payload) {
     const { data } = await api.post("/classrooms/join", payload);
+    await fetchProfile();
+    return data;
+  }
+
+  async function leaveClassroom(classroomId) {
+    const { data } = await api.delete(`/classrooms/${classroomId}/leave`);
     await fetchProfile();
     return data;
   }
@@ -118,6 +130,7 @@ export function AuthProvider({ children }) {
         signup: (payload) => authenticate("signup", payload),
         createClassroom,
         joinClassroom,
+        leaveClassroom,
         switchClassroom,
         clearActiveClassroom,
         updateClassroom,

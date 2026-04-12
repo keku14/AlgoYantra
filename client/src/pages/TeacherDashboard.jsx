@@ -683,13 +683,13 @@ export default function TeacherDashboard() {
 
           <div className="grid gap-6 xl:grid-cols-[0.36fr,0.64fr]">
             <SectionCard title="Assignment results" eyebrow="Choose an assignment">
-              <div className="space-y-3">
+              <div className="dashboard-scrollbar max-h-[50rem] space-y-3 overflow-y-auto pr-2">
                 {assignments.length ? assignments.map((assignment) => (
                   <button
                     key={assignment._id}
                     type="button"
                     onClick={() => setSelectedAssignmentId(assignment._id)}
-                    className={`w-full rounded-[1.5rem] border px-4 py-4 text-left transition ${
+                    className={`flex min-h-[9rem] w-full flex-col justify-between rounded-[1.5rem] border px-4 py-4 text-left transition ${
                       selectedAssignmentId === assignment._id
                         ? "border-cyan-300/50 bg-cyan-400/10 text-cyan-50"
                         : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 light:border-slate-200 light:bg-white light:text-slate-700"
@@ -744,27 +744,31 @@ export default function TeacherDashboard() {
                 </div>
               </div>
 
-              <div className="mt-5 space-y-3">
-                {assignmentSubmissions.length ? assignmentSubmissions.map((submission) => (
-                  <div
-                    key={submission._id}
-                    className="flex items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/5 px-4 py-4 light:border-slate-200 light:bg-white"
-                  >
-                    <div>
-                      <p className="font-medium text-white light:text-slate-900">
-                        {submission.student?.name}
-                      </p>
-                      <p className="text-sm text-slate-400 light:text-slate-600">
-                        {submission.student?.email}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-display text-2xl font-bold text-cyan-200 light:text-cyan-700">
-                        {submission.score}%
+              <div className="mt-5">
+                {assignmentSubmissions.length ? (
+                  <div className="dashboard-scrollbar max-h-[50rem] space-y-3 overflow-y-auto pr-2">
+                    {assignmentSubmissions.map((submission) => (
+                      <div
+                        key={submission._id}
+                        className="flex min-h-[6.75rem] items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/5 px-4 py-4 light:border-slate-200 light:bg-white"
+                      >
+                        <div>
+                          <p className="font-medium text-white light:text-slate-900">
+                            {submission.student?.name}
+                          </p>
+                          <p className="text-sm text-slate-400 light:text-slate-600">
+                            {submission.student?.email}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-display text-2xl font-bold text-cyan-200 light:text-cyan-700">
+                            {submission.score}%
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                )) : (
+                ) : (
                   <div className="rounded-[1.5rem] border border-dashed border-white/15 p-6 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
                     No submissions yet for this assignment.
                   </div>

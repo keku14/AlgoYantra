@@ -7,6 +7,7 @@ import {
   getClassroomRoster,
   getMyClassrooms,
   joinClassroom,
+  leaveClassroom,
   setActiveClassroom,
   updateClassroom,
 } from "../controllers/classroomController.js";
@@ -18,7 +19,8 @@ router.use(protect);
 router.get("/", getMyClassrooms);
 router.post("/", authorize("teacher"), createClassroom);
 router.post("/join", authorize("student"), joinClassroom);
-router.patch("/active/clear", authorize("teacher"), clearActiveClassroom);
+router.delete("/:classroomId/leave", authorize("student"), leaveClassroom);
+router.patch("/active/clear", clearActiveClassroom);
 router.patch("/:classroomId/active", setActiveClassroom);
 router.put("/:classroomId", authorize("teacher"), updateClassroom);
 router.delete("/:classroomId", authorize("teacher"), deleteClassroom);

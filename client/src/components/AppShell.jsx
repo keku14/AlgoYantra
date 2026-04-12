@@ -37,12 +37,14 @@ export default function AppShell({
   return (
     <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex items-start justify-between gap-4">
-          <SiteBrand />
-          <div className="flex items-center gap-3">
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center">
+          <div className="flex justify-start">
+            <SiteBrand />
+          </div>
+          <div className="flex justify-center">
             {topActions}
-            <ThemeToggle />
-
+          </div>
+          <div className="flex justify-end">
             <div ref={menuRef} className="relative">
               <button
                 type="button"
@@ -63,11 +65,18 @@ export default function AppShell({
               {isProfileMenuOpen ? (
                 <div className="glass-panel section-gradient absolute right-0 top-[calc(100%+0.75rem)] z-20 w-[320px] p-5 shadow-2xl">
                   <div className="rounded-[1.25rem] border border-white/10 bg-white/8 p-4 light:border-slate-200 light:bg-white/80">
-                    <p className="text-sm text-slate-300 light:text-slate-600">{user?.role}</p>
-                    <h2 className="mt-1 font-display text-lg font-semibold text-white light:text-slate-900">
-                      {user?.name}
-                    </h2>
-                    <p className="mt-2 text-sm text-slate-300 light:text-slate-600">{user?.email}</p>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm text-slate-300 light:text-slate-600">{user?.role}</p>
+                        <h2 className="mt-1 font-display text-lg font-semibold text-white light:text-slate-900">
+                          {user?.name}
+                        </h2>
+                        <p className="mt-2 break-all text-sm text-slate-300 light:text-slate-600">{user?.email}</p>
+                      </div>
+                      <div className="shrink-0">
+                        <ThemeToggle />
+                      </div>
+                    </div>
                   </div>
 
                   <nav className="mt-4 space-y-2">

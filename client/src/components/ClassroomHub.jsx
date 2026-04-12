@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { Check, ClipboardCopy, DoorOpen, GraduationCap, Plus, School, Search, Users, X } from "lucide-react";
+import { Check, ClipboardCopy, DoorOpen, GraduationCap, Minus, Plus, School, Search, Users, X } from "lucide-react";
 
 import SectionCard from "./SectionCard.jsx";
 
@@ -16,6 +16,7 @@ export default function ClassroomHub({
   onClearActiveClassroom,
   onCreateClassroom,
   onJoinClassroom,
+  onLeaveClassroom,
   onLoadTeacherRoster,
   onUpdateClassroom,
   onDeleteClassroom,
@@ -36,6 +37,9 @@ export default function ClassroomHub({
   const [teacherRosterLoading, setTeacherRosterLoading] = useState(false);
   const [teacherClassroomSearch, setTeacherClassroomSearch] = useState("");
   const [teacherSearch, setTeacherSearch] = useState("");
+  const [classroomPendingDelete, setClassroomPendingDelete] = useState(null);
+  const [classroomPendingLeave, setClassroomPendingLeave] = useState(null);
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const sortedClassrooms = useMemo(
     () => [...classrooms].sort((left, right) => String(left.name || "").localeCompare(String(right.name || ""))),
     [classrooms],
@@ -163,6 +167,7 @@ export default function ClassroomHub({
       code: studentCode,
     });
     setStudentCode("");
+    setIsJoinModalOpen(false);
   }
 
   function openCreateModal() {
@@ -185,12 +190,38 @@ export default function ClassroomHub({
     setIsCreateModalOpen(true);
   }
 
+  async function confirmDeleteClassroom() {
+    if (!classroomPendingDelete) {
+      return;
+    }
+
+    const classroomToDelete = classroomPendingDelete;
+    setClassroomPendingDelete(null);
+
+    await onDeleteClassroom?.(classroomToDelete);
+    if (String(selectedTeacherClassroomId) === String(classroomToDelete._id)) {
+      setSelectedTeacherClassroomId("");
+      setTeacherRoster([]);
+      setTeacherRosterClassroom(null);
+      setTeacherSearch("");
+    }
+  }
+
+  async function confirmLeaveClassroom() {
+    if (!classroomPendingLeave) {
+      return;
+    }
+
+    const classroomToLeave = classroomPendingLeave;
+    setClassroomPendingLeave(null);
+    await onLeaveClassroom?.(classroomToLeave._id);
+  }
+
   return (
     <div className="space-y-6">
       {role === "teacher" ? (
         <SectionCard
           title="Your classrooms"
-          eyebrow="Switch between cohorts"
           actions={(
             <button
               type="button"
@@ -215,13 +246,13 @@ export default function ClassroomHub({
                     value={teacherClassroomSearch}
                     onChange={(event) => setTeacherClassroomSearch(event.target.value)}
                     placeholder="Search by class name, code, institution, or section"
-                    className="min-w-0 flex-1 bg-transparent text-base text-white outline-none placeholder:text-slate-500 light:text-slate-900"
+                    className="min-w-0 flex-1 bg-transparent text-lg text-white outline-none placeholder:text-lg placeholder:text-slate-500 light:text-slate-900"
                   />
                 </label>
               </div>
 
               <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/20 p-3 light:border-slate-200 light:bg-slate-50">
-                <div className="dashboard-scrollbar max-h-[720px] space-y-3 overflow-y-auto pr-2">
+                <div className="dashboard-scrollbar max-h-[34rem] space-y-3 overflow-y-auto pr-2">
                 {filteredTeacherClassrooms.length ? filteredTeacherClassrooms.map((classroom) => {
                   const isActive = String(activeClassroom?._id || "") === String(classroom._id);
                   const isSelected = String(selectedTeacherClassroomId || "") === String(classroom._id);
@@ -285,21 +316,9 @@ export default function ClassroomHub({
                         </button>
                         <button
                           type="button"
-                          onClick={async (event) => {
+                          onClick={(event) => {
                             event.stopPropagation();
-                            const confirmed = window.confirm(`Delete classroom "${classroom.name}"? This will remove its assignments and submissions.`);
-
-                            if (!confirmed) {
-                              return;
-                            }
-
-                            await onDeleteClassroom?.(classroom);
-                            if (String(selectedTeacherClassroomId) === String(classroom._id)) {
-                              setSelectedTeacherClassroomId("");
-                              setTeacherRoster([]);
-                              setTeacherRosterClassroom(null);
-                              setTeacherSearch("");
-                            }
+                            setClassroomPendingDelete(classroom);
                           }}
                           className="rounded-full border border-rose-300/20 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-rose-100 transition hover:bg-rose-500/20 light:text-rose-700"
                         >
@@ -380,12 +399,12 @@ export default function ClassroomHub({
                         value={teacherSearch}
                         onChange={(event) => setTeacherSearch(event.target.value)}
                         placeholder="Search students by name or email"
-                        className="min-w-0 flex-1 bg-transparent text-base text-white outline-none placeholder:text-slate-500 light:text-slate-900"
+                        className="min-w-0 flex-1 bg-transparent text-lg text-white outline-none placeholder:text-lg placeholder:text-slate-500 light:text-slate-900"
                       />
                     </label>
                   </div>
 
-                  <div className="dashboard-scrollbar max-h-[520px] space-y-3 overflow-y-auto pr-2">
+                  <div className="dashboard-scrollbar max-h-[22rem] space-y-3 overflow-y-auto pr-2">
                     {teacherRosterLoading ? (
                       <div className="rounded-[1.35rem] border border-dashed border-white/15 p-6 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
                         Loading roster...
@@ -421,46 +440,31 @@ export default function ClassroomHub({
                 </div>
               ) : (
                 <div className="rounded-[1.5rem] border border-dashed border-white/15 p-6 text-sm text-slate-400 light:border-slate-300 light:text-slate-600">
-                  Your classrooms stay listed on the left even when no class is active. Select one to open its students here, or create a new classroom from the plus button.
+                  Select a classroom to open its students here, or create a new classroom from the plus button.
                 </div>
               )}
             </div>
           </div>
         </SectionCard>
-      ) : (
-        <SectionCard
-          title="Join a classroom"
-          eyebrow="Enter your class code"
-        >
-            <form onSubmit={handleStudentSubmit} className="space-y-4">
-              <label className="block space-y-2">
-                <span className="text-sm text-slate-300 light:text-slate-700">Class code</span>
-                <input
-                  value={studentCode}
-                  onChange={(event) => setStudentCode(event.target.value.toUpperCase())}
-                  placeholder="e.g. ABC-234"
-                  className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 uppercase tracking-[0.22em] text-white light:border-slate-200 light:bg-white light:text-slate-900"
-                />
-              </label>
-
-              <button
-                type="submit"
-                disabled={mutatingClassroom}
-                className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 font-semibold text-slate-950 disabled:opacity-60"
-              >
-                {mutatingClassroom ? "Joining..." : "Join classroom"}
-              </button>
-            </form>
-        </SectionCard>
-      )}
+      ) : null}
 
       {role !== "teacher" ? (
-        <div className="grid gap-6 xl:grid-cols-[1fr,0.92fr]">
+        <div className="grid items-stretch gap-6 xl:grid-cols-[1fr,0.92fr]">
           <SectionCard
             title="Joined classrooms"
-            eyebrow="Switch between cohorts"
+            className="flex h-full min-h-[calc(100vh-18rem)] flex-col"
+            actions={(
+              <button
+                type="button"
+                onClick={() => setIsJoinModalOpen(true)}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 transition"
+                aria-label="Join classroom"
+              >
+                <Plus size={18} />
+              </button>
+            )}
           >
-            <div className="space-y-3">
+            <div className="dashboard-scrollbar flex-1 space-y-3 overflow-y-auto pr-2">
               {sortedClassrooms.length ? sortedClassrooms.map((classroom) => {
                 const isActive = String(activeClassroom?._id || "") === String(classroom._id);
 
@@ -483,26 +487,24 @@ export default function ClassroomHub({
                         </p>
                         <h3 className="mt-2 font-display text-xl font-semibold">{classroom.name}</h3>
                       </div>
-                      <div className="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] light:border-slate-200">
-                        {isActive ? "Active" : "Switch"}
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setClassroomPendingLeave(classroom);
+                        }}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-rose-300/20 bg-rose-500/10 text-rose-100 transition hover:bg-rose-500/20 light:text-rose-700"
+                        aria-label={`Leave ${classroom.name}`}
+                      >
+                        <Minus size={16} />
+                      </button>
+                    </div>
+                    {isActive ? (
+                      <div className="mt-4 text-sm font-medium text-emerald-300 light:text-emerald-700">
+                        Current classroom
                       </div>
-                    </div>
-                    <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-300 light:text-slate-600">
-                      <span className="inline-flex items-center gap-2">
-                        <School size={15} />
-                        {classroom.code}
-                      </span>
-                      <span className="inline-flex items-center gap-2">
-                        <Users size={15} />
-                        {classroom.studentCount || 0} student{classroom.studentCount === 1 ? "" : "s"}
-                      </span>
-                      {isActive ? (
-                        <span className="inline-flex items-center gap-2 text-emerald-300 light:text-emerald-700">
-                          <Check size={15} />
-                          In use now
-                        </span>
-                      ) : null}
-                    </div>
+                    ) : null}
                   </button>
                 );
               }) : (
@@ -516,18 +518,134 @@ export default function ClassroomHub({
           <SectionCard
             title="Classroom guidance"
             eyebrow="How classroom access works"
+            className="flex h-full min-h-[calc(100vh-18rem)] flex-col"
           >
-            <div className="space-y-4 text-sm leading-7 text-slate-300 light:text-slate-600">
+            <div className="flex flex-1 flex-col justify-between gap-4 text-sm leading-7 text-slate-300 light:text-slate-600">
               <div className="flex items-start gap-3 rounded-[1.35rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
                 <DoorOpen className="mt-1 h-5 w-5 text-cyan-300 light:text-cyan-700" />
-                <p>Use the class code from your professor to join the right classroom before opening assignments.</p>
+                <p>Join a classroom only with a class code shared by your teacher or professor.</p>
               </div>
               <div className="flex items-start gap-3 rounded-[1.35rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
                 <GraduationCap className="mt-1 h-5 w-5 text-cyan-300 light:text-cyan-700" />
-                <p>Assignments, submissions, and analytics now stay inside the active classroom so cohorts do not mix.</p>
+                <p>Your assignments, submissions, and progress belong to the classroom you currently open.</p>
+              </div>
+              <div className="flex items-start gap-3 rounded-[1.35rem] border border-white/10 bg-white/5 p-4 light:border-slate-200 light:bg-white">
+                <Users className="mt-1 h-5 w-5 text-cyan-300 light:text-cyan-700" />
+                <p>If you join more than one classroom, switching classrooms changes which work and records you see.</p>
               </div>
             </div>
           </SectionCard>
+        </div>
+      ) : null}
+
+      {classroomPendingDelete ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 px-4 py-8">
+          <div className="glass-panel section-gradient w-full max-w-md p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-300/80 light:text-rose-600">
+              Warning
+            </p>
+            <h2 className="mt-2 font-display text-2xl font-semibold text-white light:text-slate-900">
+              Delete classroom?
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-slate-300 light:text-slate-600">
+              Delete classroom "{classroomPendingDelete.name}"? This will remove its assignments and submissions.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setClassroomPendingDelete(null)}
+                className="rounded-full border border-white/10 px-5 py-3 text-sm font-medium text-slate-200 light:border-slate-200 light:text-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteClassroom}
+                className="rounded-full border border-rose-300/20 bg-rose-500/10 px-5 py-3 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/20 light:text-rose-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {role !== "teacher" && classroomPendingLeave ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 px-4 py-8">
+          <div className="glass-panel section-gradient w-full max-w-md p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-300/80 light:text-rose-600">
+              Leave classroom
+            </p>
+            <h2 className="mt-2 font-display text-2xl font-semibold text-white light:text-slate-900">
+              Exit this classroom?
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-slate-300 light:text-slate-600">
+              Do you want to exit "{classroomPendingLeave.name}"?
+            </p>
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setClassroomPendingLeave(null)}
+                className="rounded-full border border-white/10 px-5 py-3 text-sm font-medium text-slate-200 light:border-slate-200 light:text-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmLeaveClassroom}
+                className="rounded-full border border-rose-300/20 bg-rose-500/10 px-5 py-3 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/20 light:text-rose-700"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {role !== "teacher" && isJoinModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 px-4 py-8">
+          <div className="glass-panel section-gradient w-full max-w-2xl p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-indigo-300/80 light:text-indigo-600">
+                  Enter your class code
+                </p>
+                <h2 className="mt-2 font-display text-2xl font-semibold text-white light:text-slate-900">
+                  Join a classroom
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsJoinModalOpen(false)}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10 light:border-slate-200 light:bg-white light:text-slate-700"
+                aria-label="Close join classroom dialog"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form id="student-join-classroom-form" onSubmit={handleStudentSubmit} className="mt-6 space-y-4">
+              <label className="block space-y-2">
+                <span className="text-sm text-slate-300 light:text-slate-700">Class code</span>
+                <input
+                  value={studentCode}
+                  onChange={(event) => setStudentCode(event.target.value.toUpperCase())}
+                  placeholder="e.g. ABC-234"
+                  className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 uppercase tracking-[0.22em] text-white light:border-slate-200 light:bg-white light:text-slate-900"
+                />
+              </label>
+
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={mutatingClassroom}
+                  className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 font-semibold text-slate-950 disabled:opacity-60"
+                >
+                  {mutatingClassroom ? "Joining..." : "Join classroom"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       ) : null}
 
